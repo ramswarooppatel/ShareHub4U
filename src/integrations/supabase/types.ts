@@ -62,6 +62,51 @@ export type Database = {
           },
         ]
       }
+      markdown_notes: {
+        Row: {
+          content: string | null
+          created_at: string | null
+          created_by: string | null
+          id: string
+          room_id: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          room_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          content?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          room_id?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "markdown_notes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "markdown_notes_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       room_files: {
         Row: {
           file_name: string
@@ -171,6 +216,7 @@ export type Database = {
           only_host_can_upload: boolean | null
           pro_code_used: boolean | null
           room_code: string
+          room_password: string | null
           room_type: string
         }
         Insert: {
@@ -185,6 +231,7 @@ export type Database = {
           only_host_can_upload?: boolean | null
           pro_code_used?: boolean | null
           room_code: string
+          room_password?: string | null
           room_type?: string
         }
         Update: {
@@ -199,6 +246,7 @@ export type Database = {
           only_host_can_upload?: boolean | null
           pro_code_used?: boolean | null
           room_code?: string
+          room_password?: string | null
           room_type?: string
         }
         Relationships: [
