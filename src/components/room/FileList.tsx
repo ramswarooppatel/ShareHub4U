@@ -2,7 +2,8 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Download, FileText, Loader2 } from "lucide-react";
+import { Download, FileText, Loader2, Eye } from "lucide-react";
+import { FilePreviewModal } from "./FilePreviewModal";
 
 interface File {
   id: string;
@@ -21,6 +22,8 @@ export const FileList = ({ roomId }: FileListProps) => {
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
+  const [previewFile, setPreviewFile] = useState<File | null>(null);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
 
   useEffect(() => {
     loadFiles();
@@ -82,6 +85,11 @@ export const FileList = ({ roomId }: FileListProps) => {
     return date.toLocaleString();
   };
 
+  const openPreview = (file: File) => {
+    setPreviewFile(file);
+    setIsPreviewOpen(true);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -100,7 +108,14 @@ export const FileList = ({ roomId }: FileListProps) => {
   }
 
   return (
-    <div className="space-y-3">
+    <>
+      <FilePreviewModal
+        isOpen={isPreviewOpen}
+        onClose={() => setIsPreviewOpen(false)}
+        file={previewFile}
+      />
+      
+      <div className="space-y-3">
       {files.map((file) => (
         <div
           key={file.id}
@@ -112,16 +127,27 @@ export const FileList = ({ roomId }: FileListProps) => {
               {formatFileSize(file.file_size)} • {formatDate(file.uploaded_at)}
             </p>
           </div>
-          <Button
-            onClick={() => window.open(file.file_url, "_blank")}
-            size="sm"
-            variant="outline"
-          >
-            <Download className="h-4 w-4 mr-2" />
-            Download
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => openPreview(file)}
+              size="sm"
+              variant="outline"
+            >
+              <Eye className="h-4 w-4 mr-2" />
+              View
+            </Button>
+            <Button
+              onClick={() => window.open(file.file_url, "_blank")}
+              size="sm"
+              variant="outline"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              Download
+            </Button>
+          </div>
         </div>
       ))}
-    </div>
+      </div>
+    </>
   );
 };

@@ -4,14 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DoorOpen, Plus } from "lucide-react";
+import { Loader2, DoorOpen, Plus, Lock, Key, Globe } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [customSlug, setCustomSlug] = useState("");
+  const [roomType, setRoomType] = useState("public");
+  const [roomPassword, setRoomPassword] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -21,6 +24,15 @@ const Index = () => {
   };
 
   const createRoom = async () => {
+    if (roomType === "private_key" && !roomPassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Please enter a password for the private key room.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsCreating(true);
     try {
       const roomCode = customSlug.trim() || generateRoomCode();
@@ -57,12 +69,23 @@ const Index = () => {
       }
 
       // Create room
+      const roomData: any = {
+        room_code: roomCode,
+        host_id: userId,
+        room_type: roomType,
+      };
+
+      if (roomType === "private_key") {
+        roomData.room_password = roomPassword;
+      }
+
+      if (roomType === "locked") {
+        roomData.auto_accept_requests = false;
+      }
+
       const { data, error } = await supabase
         .from("rooms")
-        .insert({
-          room_code: roomCode,
-          host_id: userId,
-        })
+        .insert(roomData)
         .select()
         .single();
 
@@ -160,6 +183,49 @@ const Index = () => {
                   Leave empty for auto-generated code
                 </p>
               </div>
+
+              <div>
+                <Label htmlFor="roomType">Room Type</Label>
+                <Select value={roomType} onValueChange={setRoomType}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select room type" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="public">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-4 w-4" />
+                        <span>Public - Anyone can join</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="locked">
+                      <div className="flex items-center gap-2">
+                        <Lock className="h-4 w-4" />
+                        <span>Locked - Requires approval</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="private_key">
+                      <div className="flex items-center gap-2">
+                        <Key className="h-4 w-4" />
+                        <span>Private Key - Password protected</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {roomType === "private_key" && (
+                <div>
+                  <Label htmlFor="roomPassword">Room Password</Label>
+                  <Input
+                    id="roomPassword"
+                    type="password"
+                    value={roomPassword}
+                    onChange={(e) => setRoomPassword(e.target.value)}
+                    placeholder="Enter password..."
+                    className="mt-2"
+                  />
+                </div>
+              )}
 
               <Button
                 onClick={createRoom}
