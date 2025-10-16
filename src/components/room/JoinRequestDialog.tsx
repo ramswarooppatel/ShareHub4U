@@ -34,6 +34,9 @@ export const JoinRequestDialog = ({
         message: message.trim() || undefined,
         password: password.trim() || undefined
       });
+      setAnonymousName("");
+      setMessage("");
+      setPassword("");
       onClose();
     } catch (error) {
       // Error handled by parent

@@ -212,8 +212,8 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
           </TabsContent>
           
           <TabsContent value="preview">
-            <Card className="p-4 min-h-[300px]">
-              <div className="prose prose-sm max-w-none dark:prose-invert">
+            <Card className="p-6 min-h-[300px] bg-card">
+              <div className="prose prose-sm md:prose-base max-w-none dark:prose-invert prose-headings:text-foreground prose-p:text-muted-foreground prose-strong:text-foreground prose-code:text-primary prose-pre:bg-muted prose-pre:text-foreground prose-a:text-primary hover:prose-a:text-primary/80 prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-li:text-muted-foreground">
                 <ReactMarkdown remarkPlugins={[remarkGfm]}>
                   {content || "*Nothing to preview yet*"}
                 </ReactMarkdown>

@@ -5,13 +5,16 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck } from "lucide-react";
+import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff } from "lucide-react";
 import { FileUpload } from "@/components/room/FileUpload";
 import { FileList } from "@/components/room/FileList";
 import { ParticipantList } from "@/components/room/ParticipantList";
 import { MarkdownEditor } from "@/components/room/MarkdownEditor";
 import { JoinRequestDialog } from "@/components/room/JoinRequestDialog";
 import { JoinRequestPanel } from "@/components/room/JoinRequestPanel";
+import { RoomTimer } from "@/components/room/RoomTimer";
+import { PasswordEntryModal } from "@/components/room/PasswordEntryModal";
+import { getDeviceId } from "@/utils/deviceId";
 
 interface Room {
   id: string;
@@ -22,6 +25,8 @@ interface Room {
   file_sharing_enabled: boolean;
   only_host_can_upload: boolean;
   auto_accept_requests: boolean;
+  is_permanent: boolean;
+  expires_at: string | null;
 }
 
 const Room = () => {
@@ -33,6 +38,8 @@ const Room = () => {
   const [userId, setUserId] = useState<string>("");
   const [copied, setCopied] = useState(false);
   const [showJoinDialog, setShowJoinDialog] = useState(false);
+  const [showPasswordModal, setShowPasswordModal] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
 
   useEffect(() => {
@@ -93,14 +100,58 @@ const Room = () => {
       setRoom(data);
 
       // Check if user needs to request access
-      if (data.room_type === "locked" || data.room_type === "private_key") {
-        const isHost = data.host_id === userId;
-        
-        if (!isHost) {
-          setShowJoinDialog(true);
+      const deviceId = getDeviceId();
+      const isHost = data.host_id === userId;
+
+      if (!isHost) {
+        // Check if device already has access (approved before)
+        const { data: participantData } = await supabase
+          .from("room_participants")
+          .select("*")
+          .eq("room_id", data.id)
+          .eq("device_id", deviceId)
+          .maybeSingle();
+
+        if (participantData) {
+          // Device already approved
+          setHasAccess(true);
+          setupRealtimeSubscription();
+        } else if (data.room_type === "private_key") {
+          setShowPasswordModal(true);
           setHasAccess(false);
           setLoading(false);
           return;
+        } else if (data.room_type === "locked") {
+          // Check if there's a pending/approved request
+          const { data: requestData } = await supabase
+            .from("join_requests")
+            .select("*")
+            .eq("room_id", data.id)
+            .eq("device_id", deviceId)
+            .order("created_at", { ascending: false })
+            .limit(1)
+            .maybeSingle();
+
+          if (requestData?.status === "approved") {
+            // Add to participants
+            await supabase.from("room_participants").insert({
+              room_id: data.id,
+              user_id: userId,
+              device_id: deviceId,
+              role: "member",
+            });
+            setHasAccess(true);
+            setupRealtimeSubscription();
+          } else if (requestData?.status === "pending") {
+            // Redirect to waiting page
+            navigate(`/room/${slug}/waiting`);
+            return;
+          } else {
+            setShowJoinDialog(true);
+            setHasAccess(false);
+            setLoading(false);
+            return;
+          }
         }
       }
 
@@ -118,31 +169,48 @@ const Room = () => {
   };
 
 
+  const handlePasswordSubmit = async (password: string) => {
+    if (!room) return;
+
+    if (password !== room.room_password) {
+      toast({
+        title: "Incorrect password",
+        description: "The password you entered is incorrect.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const deviceId = getDeviceId();
+    
+    // Add to participants with device tracking
+    await supabase.from("room_participants").insert({
+      room_id: room.id,
+      user_id: userId,
+      device_id: deviceId,
+      role: "member",
+    });
+
+    setHasAccess(true);
+    setShowPasswordModal(false);
+    setupRealtimeSubscription();
+    toast({ title: "Access granted!" });
+  };
+
   const handleJoinRequest = async (data: { anonymousName?: string; message?: string; password?: string }) => {
     if (!room) return;
 
     try {
-      if (room.room_type === "private_key") {
-        // Verify password
-        if (data.password !== room.room_password) {
-          toast({
-            title: "Incorrect password",
-            description: "The password you entered is incorrect.",
-            variant: "destructive",
-          });
-          return;
-        }
-        setHasAccess(true);
-        setShowJoinDialog(false);
-        setupRealtimeSubscription();
-        toast({ title: "Access granted!" });
-      } else if (room.room_type === "locked") {
+      if (room.room_type === "locked") {
+        const deviceId = getDeviceId();
+        
         // Submit join request
         const { error } = await supabase.from("join_requests").insert({
           room_id: room.id,
           user_id: userId,
           anonymous_name: data.anonymousName,
           message: data.message,
+          device_id: deviceId,
           status: "pending",
         });
 
@@ -150,9 +218,11 @@ const Room = () => {
 
         toast({
           title: "Request sent!",
-          description: "Waiting for host approval...",
+          description: "Redirecting to waiting page...",
         });
-        setShowJoinDialog(false);
+        
+        // Redirect to waiting page
+        navigate(`/room/${slug}/waiting`);
       }
     } catch (error: any) {
       toast({
@@ -210,7 +280,12 @@ const Room = () => {
           onClose={() => navigate("/")}
           onSubmit={handleJoinRequest}
           roomType={room.room_type}
-          requiresPassword={room.room_type === "private_key"}
+          requiresPassword={false}
+        />
+        <PasswordEntryModal
+          isOpen={showPasswordModal}
+          onClose={() => navigate("/")}
+          onSubmit={handlePasswordSubmit}
         />
         <div className="min-h-screen bg-background flex items-center justify-center">
           <Card className="p-8 text-center">
@@ -241,9 +316,29 @@ const Room = () => {
       <header className="border-b border-border bg-card">
         <div className="container mx-auto px-4 py-4">
           <div className="flex items-center justify-between flex-wrap gap-4">
-            <div>
+            <div className="flex-1">
               <h1 className="text-2xl font-bold text-foreground">Room: {room.room_code}</h1>
-              <p className="text-sm text-muted-foreground mt-1">Share files and collaborate</p>
+              <p className="text-sm text-muted-foreground mt-1">
+                {room.room_type === "public" && "Public room - Anyone can join"}
+                {room.room_type === "locked" && "Locked room - Requires approval"}
+                {room.room_type === "private_key" && "Password protected room"}
+              </p>
+              {room.room_type === "private_key" && room.room_password && room.host_id === userId && (
+                <div className="flex items-center gap-2 mt-2">
+                  <span className="text-xs text-muted-foreground">Password:</span>
+                  <code className="text-xs bg-muted px-2 py-1 rounded font-mono">
+                    {showPassword ? room.room_password : "••••••••"}
+                  </code>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="h-6 w-6 p-0"
+                  >
+                    {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                  </Button>
+                </div>
+              )}
             </div>
             <div className="flex items-center gap-2">
               <Button
@@ -320,6 +415,8 @@ const Room = () => {
           </div>
 
           <div className="space-y-6">
+            <RoomTimer expiresAt={room.expires_at} isPermanent={room.is_permanent} />
+            
             <Card className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <Users className="h-5 w-5 text-primary" />
