@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DoorOpen, Plus, Lock, Key, Globe } from "lucide-react";
+import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity, Ticket } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -17,6 +17,7 @@ const Index = () => {
   const [roomPassword, setRoomPassword] = useState("");
   const [hostUsername, setHostUsername] = useState("");
   const [hostPasscode, setHostPasscode] = useState("");
+  const [proCode, setProCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -94,11 +95,72 @@ const Index = () => {
         if (updateError) throw updateError;
       }
 
+      // Validate and consume pro code if provided
+      let isPermanent = false;
+      if (proCode.trim()) {
+        const { data: proCodeData, error: proCodeError } = await supabase
+          .from("pro_codes")
+          .select("*")
+          .eq("code", proCode.trim())
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (proCodeError) throw proCodeError;
+
+        if (!proCodeData) {
+          toast({
+            title: "Invalid pro code",
+            description: "The pro code you entered is invalid or has expired.",
+            variant: "destructive",
+          });
+          setIsCreating(false);
+          return;
+        }
+
+        if (proCodeData.rooms_created >= proCodeData.max_rooms) {
+          toast({
+            title: "Pro code limit reached",
+            description: "This pro code has reached its maximum room limit.",
+            variant: "destructive",
+          });
+          setIsCreating(false);
+          return;
+        }
+
+        if (proCodeData.credits <= 0) {
+          toast({
+            title: "No credits remaining",
+            description: "This pro code has no credits remaining.",
+            variant: "destructive",
+          });
+          setIsCreating(false);
+          return;
+        }
+
+        // Update pro code usage
+        await supabase
+          .from("pro_codes")
+          .update({
+            rooms_created: proCodeData.rooms_created + 1,
+            credits: proCodeData.credits - 1,
+          })
+          .eq("id", proCodeData.id);
+
+        isPermanent = true;
+        
+        toast({
+          title: "Pro code applied!",
+          description: "Your room will be permanent and never expire.",
+        });
+      }
+
       // Create room
       const roomData: any = {
         room_code: roomCode,
         host_id: userId,
         room_type: roomType,
+        is_permanent: isPermanent,
+        pro_code_used: proCode.trim() !== "",
       };
 
       if (roomType === "private_key") {
@@ -295,6 +357,24 @@ const Index = () => {
                   </p>
                 </div>
               )}
+
+              <div className="border-t border-border pt-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Infinity className="h-4 w-4 text-primary" />
+                  <Label htmlFor="proCode">Pro Code (Optional)</Label>
+                </div>
+                <Input
+                  id="proCode"
+                  value={proCode}
+                  onChange={(e) => setProCode(e.target.value)}
+                  placeholder="Enter pro code for permanent room..."
+                  className="mt-2"
+                />
+                <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                  <Ticket className="h-3 w-3" />
+                  Pro codes create permanent rooms that never expire
+                </p>
+              </div>
 
               <Button
                 onClick={createRoom}

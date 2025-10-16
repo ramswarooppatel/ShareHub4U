@@ -18,6 +18,7 @@ export type Database = {
         Row: {
           anonymous_name: string | null
           created_at: string | null
+          device_id: string | null
           id: string
           message: string | null
           responded_at: string | null
@@ -28,6 +29,7 @@ export type Database = {
         Insert: {
           anonymous_name?: string | null
           created_at?: string | null
+          device_id?: string | null
           id?: string
           message?: string | null
           responded_at?: string | null
@@ -38,6 +40,7 @@ export type Database = {
         Update: {
           anonymous_name?: string | null
           created_at?: string | null
+          device_id?: string | null
           id?: string
           message?: string | null
           responded_at?: string | null
@@ -107,6 +110,42 @@ export type Database = {
           },
         ]
       }
+      pro_codes: {
+        Row: {
+          code: string
+          created_at: string | null
+          created_by: string | null
+          credits: number
+          expires_at: string | null
+          id: string
+          is_active: boolean
+          max_rooms: number
+          rooms_created: number
+        }
+        Insert: {
+          code: string
+          created_at?: string | null
+          created_by?: string | null
+          credits?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_rooms?: number
+          rooms_created?: number
+        }
+        Update: {
+          code?: string
+          created_at?: string | null
+          created_by?: string | null
+          credits?: number
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean
+          max_rooms?: number
+          rooms_created?: number
+        }
+        Relationships: []
+      }
       room_files: {
         Row: {
           file_name: string
@@ -164,6 +203,7 @@ export type Database = {
       room_participants: {
         Row: {
           anonymous_name: string | null
+          device_id: string | null
           id: string
           joined_at: string | null
           role: string
@@ -172,6 +212,7 @@ export type Database = {
         }
         Insert: {
           anonymous_name?: string | null
+          device_id?: string | null
           id?: string
           joined_at?: string | null
           role?: string
@@ -180,6 +221,7 @@ export type Database = {
         }
         Update: {
           anonymous_name?: string | null
+          device_id?: string | null
           id?: string
           joined_at?: string | null
           role?: string
