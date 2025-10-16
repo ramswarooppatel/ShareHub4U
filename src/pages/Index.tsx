@@ -15,6 +15,8 @@ const Index = () => {
   const [customSlug, setCustomSlug] = useState("");
   const [roomType, setRoomType] = useState("public");
   const [roomPassword, setRoomPassword] = useState("");
+  const [hostUsername, setHostUsername] = useState("");
+  const [hostPasscode, setHostPasscode] = useState("");
   const [joinCode, setJoinCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -24,10 +26,20 @@ const Index = () => {
   };
 
   const createRoom = async () => {
+    // Validate inputs
     if (roomType === "private_key" && !roomPassword.trim()) {
       toast({
         title: "Password required",
         description: "Please enter a password for the private key room.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (roomType === "locked" && (!hostUsername.trim() || !hostPasscode.trim())) {
+      toast({
+        title: "Credentials required",
+        description: "Please enter username and passphrase for locked room.",
         variant: "destructive",
       });
       return;
@@ -59,13 +71,27 @@ const Index = () => {
       if (!userId) {
         const { data: userData, error: userError } = await supabase
           .from("users")
-          .insert({})
+          .insert({
+            username: roomType === "locked" ? hostUsername : null,
+            passcode: roomType === "locked" ? hostPasscode : null,
+          })
           .select()
           .single();
         
         if (userError) throw userError;
         userId = userData.id;
         localStorage.setItem("user_id", userId);
+      } else if (roomType === "locked") {
+        // Update existing user with credentials
+        const { error: updateError } = await supabase
+          .from("users")
+          .update({
+            username: hostUsername,
+            passcode: hostPasscode,
+          })
+          .eq("id", userId);
+        
+        if (updateError) throw updateError;
       }
 
       // Create room
@@ -90,6 +116,17 @@ const Index = () => {
         .single();
 
       if (error) throw error;
+
+      // Add host as participant
+      const { error: participantError } = await supabase
+        .from("room_participants")
+        .insert({
+          room_id: data.id,
+          user_id: userId,
+          role: "host",
+        });
+
+      if (participantError) throw participantError;
 
       toast({
         title: "Room created!",
@@ -213,6 +250,35 @@ const Index = () => {
                 </Select>
               </div>
 
+              {roomType === "locked" && (
+                <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
+                  <p className="text-sm text-muted-foreground">
+                    Set your credentials to approve join requests
+                  </p>
+                  <div>
+                    <Label htmlFor="hostUsername">Username</Label>
+                    <Input
+                      id="hostUsername"
+                      value={hostUsername}
+                      onChange={(e) => setHostUsername(e.target.value)}
+                      placeholder="Enter your username..."
+                      className="mt-2"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="hostPasscode">Passphrase</Label>
+                    <Input
+                      id="hostPasscode"
+                      type="password"
+                      value={hostPasscode}
+                      onChange={(e) => setHostPasscode(e.target.value)}
+                      placeholder="Enter your passphrase..."
+                      className="mt-2"
+                    />
+                  </div>
+                </div>
+              )}
+
               {roomType === "private_key" && (
                 <div>
                   <Label htmlFor="roomPassword">Room Password</Label>
@@ -224,6 +290,9 @@ const Index = () => {
                     placeholder="Enter password..."
                     className="mt-2"
                   />
+                  <p className="text-xs text-muted-foreground mt-1">
+                    Users will need this password to join
+                  </p>
                 </div>
               )}
 
