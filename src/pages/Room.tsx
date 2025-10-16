@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff } from "lucide-react";
+import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff, RefreshCw } from "lucide-react";
 import { FileUpload } from "@/components/room/FileUpload";
 import { FileList } from "@/components/room/FileList";
 import { ParticipantList } from "@/components/room/ParticipantList";
@@ -15,6 +15,7 @@ import { JoinRequestPanel } from "@/components/room/JoinRequestPanel";
 import { RoomTimer } from "@/components/room/RoomTimer";
 import { PasswordEntryModal } from "@/components/room/PasswordEntryModal";
 import { getDeviceId } from "@/utils/deviceId";
+import { RoomSettings } from "@/components/room/RoomSettings";
 
 interface Room {
   id: string;
@@ -41,6 +42,7 @@ const Room = () => {
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
 
   useEffect(() => {
     initializeUser();
@@ -115,7 +117,6 @@ const Room = () => {
         if (participantData) {
           // Device already approved
           setHasAccess(true);
-          setupRealtimeSubscription();
         } else if (data.room_type === "private_key") {
           setShowPasswordModal(true);
           setHasAccess(false);
@@ -141,7 +142,6 @@ const Room = () => {
               role: "member",
             });
             setHasAccess(true);
-            setupRealtimeSubscription();
           } else if (requestData?.status === "pending") {
             // Redirect to waiting page
             navigate(`/room/${slug}/waiting`);
@@ -156,7 +156,6 @@ const Room = () => {
       }
 
       setHasAccess(true);
-      setupRealtimeSubscription();
     } catch (error: any) {
       toast({
         title: "Error",
@@ -193,7 +192,6 @@ const Room = () => {
 
     setHasAccess(true);
     setShowPasswordModal(false);
-    setupRealtimeSubscription();
     toast({ title: "Access granted!" });
   };
 
@@ -233,29 +231,6 @@ const Room = () => {
     }
   };
 
-  const setupRealtimeSubscription = () => {
-    const channel = supabase
-      .channel('room-changes')
-      .on(
-        'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'room_files',
-          filter: `room_id=eq.${slug}`
-        },
-        () => {
-          // Reload files when changes occur
-          loadRoom();
-        }
-      )
-      .subscribe();
-
-    return () => {
-      supabase.removeChannel(channel);
-    };
-  };
-
   const copyRoomLink = () => {
     const link = window.location.href;
     navigator.clipboard.writeText(link);
@@ -265,6 +240,38 @@ const Room = () => {
       description: "Share this link with others to invite them.",
     });
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const refreshRoomData = async () => {
+    if (!room) return;
+    
+    setRefreshing(true);
+    try {
+      // Force reload room data
+      const { data, error } = await supabase
+        .from("rooms")
+        .select("*")
+        .eq("room_code", slug)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data) {
+        setRoom(data);
+        toast({
+          title: "Data refreshed!",
+          description: "Room data has been updated.",
+        });
+      }
+    } catch (error: any) {
+      toast({
+        title: "Error refreshing data",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setRefreshing(false);
+    }
   };
 
   const leaveRoom = () => {
@@ -349,6 +356,18 @@ const Room = () => {
                 {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
                 {copied ? "Copied!" : "Copy Link"}
               </Button>
+              <Button
+                onClick={refreshRoomData}
+                variant="outline"
+                size="sm"
+                disabled={refreshing}
+              >
+                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
+                {refreshing ? "Refreshing..." : "Refresh"}
+              </Button>
+              {room && userId === room.host_id && (
+                <RoomSettings room={room} onRoomUpdate={() => loadRoom()} />
+              )}
               <Button
                 onClick={leaveRoom}
                 variant="outline"
