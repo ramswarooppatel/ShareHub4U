@@ -7,6 +7,7 @@ import Index from "./pages/Index";
 import Room from "./pages/Room";
 import Waiting from "./pages/Waiting";
 import NotFound from "./pages/NotFound";
+import Admin from "./pages/Admin";
 
 const queryClient = new QueryClient();
 
@@ -18,6 +19,7 @@ const App = () => (
       <BrowserRouter>
         <Routes>
           <Route path="/" element={<Index />} />
+          <Route path="/admin" element={<Admin />} />
           <Route path="/room/:code/waiting" element={<Waiting />} />
           <Route path="/room/:slug" element={<Room />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}

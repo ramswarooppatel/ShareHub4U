@@ -7,13 +7,14 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity, Ticket } from "lucide-react";
+import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity, Ticket, Clock } from "lucide-react";
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [customSlug, setCustomSlug] = useState("");
   const [roomType, setRoomType] = useState("public");
+  const [roomTiming, setRoomTiming] = useState("24h");
   const [roomPassword, setRoomPassword] = useState("");
   const [hostUsername, setHostUsername] = useState("");
   const [hostPasscode, setHostPasscode] = useState("");
@@ -154,6 +155,34 @@ const Index = () => {
         });
       }
 
+      // Calculate expiration time
+      let expiresAt = null;
+      if (!isPermanent) {
+        const now = new Date();
+        switch (roomTiming) {
+          case "1h":
+            expiresAt = new Date(now.getTime() + 1 * 60 * 60 * 1000);
+            break;
+          case "12h":
+            expiresAt = new Date(now.getTime() + 12 * 60 * 60 * 1000);
+            break;
+          case "24h":
+            expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+            break;
+          case "7d":
+            expiresAt = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000);
+            break;
+          case "15d":
+            expiresAt = new Date(now.getTime() + 15 * 24 * 60 * 60 * 1000);
+            break;
+          case "30d":
+            expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+            break;
+          default:
+            expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Default to 24h
+        }
+      }
+
       // Create room
       const roomData: any = {
         room_code: roomCode,
@@ -161,6 +190,7 @@ const Index = () => {
         room_type: roomType,
         is_permanent: isPermanent,
         pro_code_used: proCode.trim() !== "",
+        expires_at: expiresAt?.toISOString(),
       };
 
       if (roomType === "private_key") {
@@ -312,6 +342,56 @@ const Index = () => {
                 </Select>
               </div>
 
+              <div>
+                <Label htmlFor="roomTiming">Room Duration</Label>
+                <Select value={roomTiming} onValueChange={setRoomTiming}>
+                  <SelectTrigger className="mt-2">
+                    <SelectValue placeholder="Select room duration" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1h">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>1 Hour</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="12h">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>12 Hours</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="24h">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>1 Day (24 Hours)</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="7d">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>7 Days</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="15d">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>15 Days</span>
+                      </div>
+                    </SelectItem>
+                    <SelectItem value="30d">
+                      <div className="flex items-center gap-2">
+                        <Clock className="h-4 w-4" />
+                        <span>30 Days</span>
+                      </div>
+                    </SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  How long the room should remain active
+                </p>
+              </div>
+
               {roomType === "locked" && (
                 <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
                   <p className="text-sm text-muted-foreground">
@@ -430,6 +510,15 @@ const Index = () => {
               </Button>
             </div>
           </Card>
+        </div>
+
+        <div className="text-center mt-8">
+          <a
+            href="/admin"
+            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            Admin Panel
+          </a>
         </div>
       </div>
     </div>
