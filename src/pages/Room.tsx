@@ -5,12 +5,13 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit } from "lucide-react";
+import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck } from "lucide-react";
 import { FileUpload } from "@/components/room/FileUpload";
 import { FileList } from "@/components/room/FileList";
 import { ParticipantList } from "@/components/room/ParticipantList";
 import { MarkdownEditor } from "@/components/room/MarkdownEditor";
 import { JoinRequestDialog } from "@/components/room/JoinRequestDialog";
+import { JoinRequestPanel } from "@/components/room/JoinRequestPanel";
 
 interface Room {
   id: string;
@@ -326,6 +327,16 @@ const Room = () => {
               </div>
               <ParticipantList roomId={room.id} hostId={room.host_id} />
             </Card>
+
+            {room.room_type === "locked" && room.host_id === userId && (
+              <Card className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <UserCheck className="h-5 w-5 text-primary" />
+                  <h2 className="text-xl font-semibold text-foreground">Join Requests</h2>
+                </div>
+                <JoinRequestPanel roomId={room.id} hostId={room.host_id} />
+              </Card>
+            )}
           </div>
         </div>
       </main>
