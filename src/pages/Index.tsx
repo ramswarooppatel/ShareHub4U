@@ -24,6 +24,7 @@ const Index = () => {
   const [joinCode, setJoinCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [isPermanent, setIsPermanent] = useState(false); // Add this line
 
   // User authentication state
   const [currentUser, setCurrentUser] = useState<{id: string, username: string | null} | null>(null);
@@ -108,9 +109,53 @@ const Index = () => {
         }
       }
 
+      // Validate pro code and determine if room should be permanent
+      let validatedProCode = null;
+      let roomIsPermanent = false;
+
+      if (proCode.trim()) {
+        const { data: proCodeData, error: proCodeError } = await supabase
+          .from("pro_codes")
+          .select("*")
+          .eq("code", proCode.trim())
+          .eq("is_active", true)
+          .gt("expires_at", new Date().toISOString())
+          .single();
+
+        if (proCodeError || !proCodeData) {
+          toast({
+            title: "Invalid pro code",
+            description: "The pro code is invalid, expired, or inactive.",
+            variant: "destructive",
+          });
+          return;
+        }
+
+        // Check if user has already used this pro code for max rooms
+        if (hostId && proCodeData.max_rooms > 0) {
+          const { count: userRoomsCount } = await supabase
+            .from("rooms")
+            .select("*", { count: "exact", head: true })
+            .eq("host_id", hostId)
+            .eq("pro_code_used", true);
+
+          if (userRoomsCount && userRoomsCount >= proCodeData.max_rooms) {
+            toast({
+              title: "Pro code limit reached",
+              description: `You have reached the maximum number of rooms (${proCodeData.max_rooms}) for this pro code.`,
+              variant: "destructive",
+            });
+            return;
+          }
+        }
+
+        validatedProCode = proCodeData;
+        roomIsPermanent = true;
+      }
+
       // Calculate expiry date
       let expiresAt = null;
-      if (!isPermanent) {
+      if (!roomIsPermanent) {
         const now = new Date();
         switch (roomTiming) {
           case "1h":
@@ -140,18 +185,29 @@ const Index = () => {
         .insert({
           room_code: roomCode,
           room_type: roomType,
-          host_id: hostId, // This will be null if user doesn't exist or not logged in
+          host_id: hostId,
           room_password: roomType === "private_key" ? roomPassword : null,
-          is_permanent: isPermanent,
+          is_permanent: roomIsPermanent,
           expires_at: expiresAt,
           file_sharing_enabled: true,
           only_host_can_upload: false,
           auto_accept_requests: roomType === "locked" ? false : true,
+          pro_code_used: !!validatedProCode,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Update pro code usage if used
+      if (validatedProCode) {
+        await supabase
+          .from("pro_codes")
+          .update({
+            rooms_created: validatedProCode.rooms_created + 1,
+          })
+          .eq("id", validatedProCode.id);
+      }
 
       // Add host as participant if logged in and user exists
       if (hostId) {
@@ -164,7 +220,7 @@ const Index = () => {
 
       toast({
         title: "Room created successfully!",
-        description: `Room code: ${roomCode}`,
+        description: roomIsPermanent ? "This is a permanent room that never expires." : `Room code: ${roomCode}`,
       });
 
       // Navigate to room
