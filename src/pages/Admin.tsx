@@ -99,61 +99,37 @@ const Admin = () => {
 
   const loadStorageUsage = async () => {
     try {
-      // Get list of files from room-files bucket
-      const { data: files, error } = await supabase.storage
-        .from("room-files")
-        .list("", {
-          limit: 1000, // Get up to 1000 files for calculation
-          sortBy: { column: "created_at", order: "desc" }
-        });
+      // Get total file size and count from room_files table
+      const { data: filesData, error: filesError } = await supabase
+        .from("room_files")
+        .select("file_size");
 
-      if (error) {
-        console.error("Error loading storage:", error);
-        throw error;
+      if (filesError) {
+        console.error("Error loading storage from database:", filesError);
+        throw filesError;
       }
 
       let totalSize = 0;
       let fileCount = 0;
 
-      if (files) {
-        fileCount = files.length;
-        
-        // Try to get size information for first few files as sample
-        // Note: This is a workaround since Supabase list doesn't return sizes
-        if (files.length > 0) {
-          try {
-            // Get metadata for first file as sample
-            const { data: fileData } = await supabase.storage
-              .from("room-files")
-              .download(files[0].name);
-            
-            if (fileData) {
-              // Estimate total size based on average file size
-              // This is approximate since we can't get all file sizes efficiently
-              const sampleSize = fileData.size;
-              totalSize = Math.round((sampleSize * fileCount) / (1024 * 1024)); // Estimate in MB
-            }
-          } catch (sizeError) {
-            console.warn("Could not get file size information:", sizeError);
-            totalSize = 0; // Fallback
-          }
-        }
+      if (filesData) {
+        fileCount = filesData.length;
+        totalSize = filesData.reduce((sum, file) => sum + (file.file_size || 0), 0);
       }
 
       // Format size
       const formatSize = (bytes: number) => {
-        if (bytes === 0) return "Calculating...";
-        if (bytes < 1024) return bytes + " B";
+        if (bytes === 0) return "0 B";
         const k = 1024;
-        const sizes = ["B", "KB", "MB", "GB"];
+        const sizes = ["B", "KB", "MB", "GB", "TB"];
         const i = Math.floor(Math.log(bytes) / Math.log(k));
-        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i];
       };
 
       setStorageUsage({
         totalSize,
         fileCount,
-        bucketSize: totalSize > 0 ? `~${formatSize(totalSize * 1024 * 1024)}` : `${fileCount} files`
+        bucketSize: formatSize(totalSize)
       });
     } catch (error: any) {
       console.error("Error loading storage usage:", error);
@@ -650,6 +626,71 @@ const Admin = () => {
     }
   };
 
+  const approveJoinRequest = async (requestId: string, roomId: string, userId: string, deviceId: string) => {
+    try {
+      // Update join request status
+      const { error: requestError } = await supabase
+        .from("join_requests")
+        .update({ 
+          status: "approved",
+          responded_at: new Date().toISOString()
+        })
+        .eq("id", requestId);
+
+      if (requestError) throw requestError;
+
+      // Add user to room participants
+      const { error: participantError } = await supabase
+        .from("room_participants")
+        .insert({
+          room_id: roomId,
+          user_id: userId,
+          device_id: deviceId,
+          role: "member",
+        });
+
+      if (participantError) throw participantError;
+
+      toast({
+        title: "Request approved",
+        description: "User has been added to the room.",
+      });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error approving request",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const denyJoinRequest = async (requestId: string) => {
+    try {
+      const { error } = await supabase
+        .from("join_requests")
+        .update({ 
+          status: "denied",
+          responded_at: new Date().toISOString()
+        })
+        .eq("id", requestId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Request denied",
+        description: "Join request has been denied.",
+      });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error denying request",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!isAuthenticated) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -1044,31 +1085,35 @@ const Admin = () => {
                         {request.anonymous_name && ` • Name: ${request.anonymous_name}`}
                       </p>
                     </div>
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
-                        <Button variant="destructive" size="sm">
-                          <Trash2 className="h-4 w-4 mr-2" />
-                          Delete
-                        </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Join Request</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            This will permanently delete this join request.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteJoinRequest(request.id)}
-                            className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    <div className="flex items-center gap-2">
+                      <span className={`px-2 py-1 text-xs rounded ${
+                        request.status === 'approved' ? 'bg-green-100 text-green-800' :
+                        request.status === 'pending' ? 'bg-yellow-100 text-yellow-800' :
+                        'bg-red-100 text-red-800'
+                      }`}>
+                        {request.status}
+                      </span>
+                      {request.status === 'pending' && (
+                        <>
+                          <Button
+                            onClick={() => approveJoinRequest(request.id, request.room_id, request.user_id, request.device_id)}
+                            variant="default"
+                            size="sm"
+                            className="bg-green-600 hover:bg-green-700"
                           >
-                            Delete Request
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
+                            Approve
+                          </Button>
+                          <Button
+                            onClick={() => denyJoinRequest(request.id)}
+                            variant="outline"
+                            size="sm"
+                            className="border-red-300 text-red-600 hover:bg-red-50"
+                          >
+                            Deny
+                          </Button>
+                        </>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
