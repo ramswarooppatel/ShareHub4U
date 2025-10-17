@@ -170,6 +170,7 @@ export const RoomSettings = ({ room, onRoomUpdate }: RoomSettingsProps) => {
           {roomType === "locked" && (
             <div className="flex items-center space-x-2">
               <input
+                title="Accept Request"
                 type="checkbox"
                 id="auto-accept"
                 checked={autoAcceptRequests}
