@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Loader2, Shield } from "lucide-react";
+import { Loader2, Shield, Eye, EyeOff } from "lucide-react";
 
 interface HostAuthDialogProps {
   isOpen: boolean;
@@ -16,6 +16,7 @@ export const HostAuthDialog = ({ isOpen, onClose, onVerify }: HostAuthDialogProp
   const [passcode, setPasscode] = useState("");
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState("");
+  const [showPasscode, setShowPasscode] = useState(false);
 
   const handleVerify = async () => {
     setError("");
@@ -59,14 +60,29 @@ export const HostAuthDialog = ({ isOpen, onClose, onVerify }: HostAuthDialogProp
 
           <div>
             <Label htmlFor="passcode">Passphrase</Label>
-            <Input
-              id="passcode"
-              type="password"
-              value={passcode}
-              onChange={(e) => setPasscode(e.target.value)}
-              placeholder="Enter your passphrase..."
-              className="mt-2"
-            />
+            <div className="relative mt-2">
+              <Input
+                id="passcode"
+                type={showPasscode ? "text" : "password"}
+                value={passcode}
+                onChange={(e) => setPasscode(e.target.value)}
+                placeholder="Enter your passphrase..."
+                className="pr-10"
+              />
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                onClick={() => setShowPasscode(!showPasscode)}
+              >
+                {showPasscode ? (
+                  <EyeOff className="h-4 w-4 text-muted-foreground" />
+                ) : (
+                  <Eye className="h-4 w-4 text-muted-foreground" />
+                )}
+              </Button>
+            </div>
           </div>
 
           {error && (

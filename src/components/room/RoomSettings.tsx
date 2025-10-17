@@ -6,7 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Settings, Loader2, Clock } from "lucide-react";
+import { Settings, Loader2, Clock, Eye, EyeOff } from "lucide-react";
 
 interface RoomSettingsProps {
   room: {
@@ -41,6 +41,7 @@ export const RoomSettings = ({ room, userId, onRoomUpdate }: RoomSettingsProps) 
   const [onlyHostCanUpload, setOnlyHostCanUpload] = useState(room.only_host_can_upload);
   const [autoAcceptRequests, setAutoAcceptRequests] = useState(room.auto_accept_requests);
   const [extendDuration, setExtendDuration] = useState("24h");
+  const [showPassword, setShowPassword] = useState(false);
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -165,14 +166,29 @@ export const RoomSettings = ({ room, userId, onRoomUpdate }: RoomSettingsProps) 
           {roomType === "private_key" && (
             <div>
               <Label htmlFor="settings-password">Room Password</Label>
-              <Input
-                id="settings-password"
-                type="password"
-                value={roomPassword}
-                onChange={(e) => setRoomPassword(e.target.value)}
-                placeholder="Enter password..."
-                className="mt-2"
-              />
+              <div className="relative mt-2">
+                <Input
+                  id="settings-password"
+                  type={showPassword ? "text" : "password"}
+                  value={roomPassword}
+                  onChange={(e) => setRoomPassword(e.target.value)}
+                  placeholder="Enter password..."
+                  className="pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                  onClick={() => setShowPassword(!showPassword)}
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4 text-muted-foreground" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-muted-foreground" />
+                  )}
+                </Button>
+              </div>
             </div>
           )}
 

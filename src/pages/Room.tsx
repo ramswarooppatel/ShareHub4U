@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff, RefreshCw, Share2 } from "lucide-react";
+import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, X, ChevronDown, ChevronUp } from "lucide-react";
 import { FileUpload } from "@/components/room/FileUpload";
 import { FileList } from "@/components/room/FileList";
 import { ParticipantList } from "@/components/room/ParticipantList";
@@ -16,6 +16,7 @@ import { RoomTimer } from "@/components/room/RoomTimer";
 import { PasswordEntryModal } from "@/components/room/PasswordEntryModal";
 import { getDeviceId } from "@/utils/deviceId";
 import { RoomSettings } from "@/components/room/RoomSettings";
+import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 interface Room {
   id: string;
@@ -44,6 +45,9 @@ const Room = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isRoomInfoExpanded, setIsRoomInfoExpanded] = useState(false);
+  const [activeTab, setActiveTab] = useState("files");
 
   useEffect(() => {
     initializeUser();
@@ -394,8 +398,126 @@ const Room = () => {
   if (!room) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20">
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col">
+      {/* Mobile Header */}
+      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm shadow-sm lg:hidden">
+        <div className="px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3 min-w-0 flex-1">
+              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
+                <Users className="h-4 w-4 text-primary" />
+              </div>
+              <div className="min-w-0 flex-1">
+                <h1 className="text-lg font-bold text-foreground truncate">
+                  Room: {room.room_code}
+                </h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  <div className={`w-2 h-2 rounded-full ${
+                    room.room_type === "public" ? "bg-green-500" :
+                    room.room_type === "locked" ? "bg-yellow-500" : "bg-blue-500"
+                  }`} />
+                  <p className="text-xs text-muted-foreground truncate">
+                    {room.room_type === "public" && "🌐 Public"}
+                    {room.room_type === "locked" && "🔒 Locked"}
+                    {room.room_type === "private_key" && "🔑 Password"}
+                  </p>
+                </div>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <Button
+                onClick={refreshRoomData}
+                variant="ghost"
+                size="sm"
+                disabled={refreshing}
+                className="h-8 w-8 p-0"
+              >
+                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
+              </Button>
+              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+                <SheetTrigger asChild>
+                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                    <Menu className="h-4 w-4" />
+                  </Button>
+                </SheetTrigger>
+                <SheetContent side="right" className="w-80">
+                  <div className="space-y-6 pt-6">
+                    {/* Room Info */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-foreground">Room Information</h3>
+                      <div className="space-y-2 text-sm">
+                        <p><span className="font-medium">Type:</span> {
+                          room.room_type === "public" && "🌐 Public room - Anyone can join"
+                        }{
+                          room.room_type === "locked" && "🔒 Locked room - Requires approval"
+                        }{
+                          room.room_type === "private_key" && "🔑 Password protected room"
+                        }</p>
+                        {room.room_type === "private_key" && room.room_password && room.host_id === userId && (
+                          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                            <span className="font-medium">Password:</span>
+                            <code className="text-xs bg-background px-2 py-1 rounded font-mono flex-1">
+                              {showPassword ? room.room_password : "••••••••"}
+                            </code>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setShowPassword(!showPassword)}
+                              className="h-6 w-6 p-0"
+                            >
+                              {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Actions */}
+                    <div className="space-y-3">
+                      <h3 className="font-semibold text-foreground">Actions</h3>
+                      <div className="space-y-2">
+                        <Button
+                          onClick={copyRoomLink}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start"
+                        >
+                          {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+                          {copied ? "Copied!" : "Copy Link"}
+                        </Button>
+                        <Button
+                          onClick={shareRoomWithPassword}
+                          variant="default"
+                          size="sm"
+                          className="w-full justify-start"
+                        >
+                          <Share2 className="h-4 w-4 mr-2" />
+                          Share Room
+                        </Button>
+                        {room && (room.room_type === "public" || userId === room.host_id) && (
+                          <RoomSettings room={room} userId={userId} onRoomUpdate={() => loadRoom()} />
+                        )}
+                        <Button
+                          onClick={leaveRoom}
+                          variant="outline"
+                          size="sm"
+                          className="w-full justify-start hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
+                        >
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Leave Room
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </SheetContent>
+              </Sheet>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Desktop Header */}
+      <header className="hidden lg:block border-b border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
         <div className="container mx-auto px-4 py-6">
           <div className="flex items-center justify-between flex-wrap gap-6">
             <div className="flex-1 min-w-0">
@@ -483,34 +605,36 @@ const Room = () => {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          <div className="lg:col-span-2">
+      {/* Main Content */}
+      <main className="flex-1 container mx-auto px-4 py-4 lg:py-8">
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-8">
+          {/* Main Content Area */}
+          <div className="xl:col-span-2 order-2 xl:order-1">
             <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm overflow-hidden">
-              <Tabs defaultValue="files" className="w-full">
-                <div className="border-b border-border/50 bg-muted/30 px-6 py-4">
-                  <TabsList className="grid w-full grid-cols-2 bg-background/50 p-1">
-                    <TabsTrigger value="files" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                      <Upload className="h-4 w-4" />
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
+                <div className="border-b border-border/50 bg-muted/30 px-4 lg:px-6 py-3 lg:py-4">
+                  <TabsList className="grid w-full grid-cols-2 bg-background/50 p-1 h-10 lg:h-11">
+                    <TabsTrigger value="files" className="flex items-center gap-2 text-xs lg:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <Upload className="h-3 w-3 lg:h-4 lg:w-4" />
                       <span className="font-medium">Files</span>
                     </TabsTrigger>
-                    <TabsTrigger value="markdown" className="flex items-center gap-2 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                      <Edit className="h-4 w-4" />
+                    <TabsTrigger value="markdown" className="flex items-center gap-2 text-xs lg:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
+                      <Edit className="h-3 w-3 lg:h-4 lg:w-4" />
                       <span className="font-medium">Notes</span>
                     </TabsTrigger>
                   </TabsList>
                 </div>
 
-                <TabsContent value="files" className="p-6 space-y-6">
+                <TabsContent value="files" className="p-4 lg:p-6 space-y-4 lg:space-y-6">
                   {room.file_sharing_enabled && (
-                    <Card className="p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm">
-                      <div className="flex items-center gap-3 mb-4">
-                        <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                          <Upload className="h-5 w-5 text-primary" />
+                    <Card className="p-4 lg:p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm">
+                      <div className="flex items-center gap-3 mb-3 lg:mb-4">
+                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                          <Upload className="h-4 w-4 lg:h-5 lg:w-5 text-primary" />
                         </div>
-                        <div>
-                          <h2 className="text-xl font-semibold text-foreground">Upload Files</h2>
-                          <p className="text-sm text-muted-foreground">Share files with room participants</p>
+                        <div className="min-w-0 flex-1">
+                          <h2 className="text-lg lg:text-xl font-semibold text-foreground">Upload Files</h2>
+                          <p className="text-xs lg:text-sm text-muted-foreground">Share files with room participants</p>
                         </div>
                       </div>
                       <FileUpload
@@ -519,70 +643,71 @@ const Room = () => {
                         disabled={room.only_host_can_upload && room.host_id !== userId}
                       />
                       {room.only_host_can_upload && room.host_id !== userId && (
-                        <p className="text-sm text-muted-foreground mt-2">
+                        <p className="text-xs lg:text-sm text-muted-foreground mt-2">
                           Only the host can upload files in this room.
                         </p>
                       )}
                     </Card>
                   )}
 
-                  <Card className="p-6 bg-gradient-to-r from-secondary/5 to-secondary/10 border-secondary/20 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center">
-                        <Download className="h-5 w-5 text-secondary-foreground" />
+                  <Card className="p-4 lg:p-6 bg-gradient-to-r from-secondary/5 to-secondary/10 border-secondary/20 shadow-sm">
+                    <div className="flex items-center gap-3 mb-3 lg:mb-4">
+                      <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
+                        <Download className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground" />
                       </div>
-                      <div>
-                        <h2 className="text-xl font-semibold text-foreground">Shared Files</h2>
-                        <p className="text-sm text-muted-foreground">Download files shared in this room</p>
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-lg lg:text-xl font-semibold text-foreground">Shared Files</h2>
+                        <p className="text-xs lg:text-sm text-muted-foreground">Download files shared in this room</p>
                       </div>
                     </div>
                     <FileList roomId={room.id} />
                   </Card>
                 </TabsContent>
 
-                <TabsContent value="markdown" className="p-6">
-                  <Card className="p-6 bg-gradient-to-r from-accent/5 to-accent/10 border-accent/20 shadow-sm">
-                    <div className="flex items-center gap-3 mb-4">
-                      <div className="w-10 h-10 rounded-full bg-accent/10 flex items-center justify-center">
-                        <Edit className="h-5 w-5 text-accent-foreground" />
+                <TabsContent value="markdown" className="p-4 lg:p-6">
+                  <Card className="p-4 lg:p-6 bg-gradient-to-r from-accent/5 to-accent/10 border-accent/20 shadow-sm">
+                    <div className="flex items-center gap-3 mb-3 lg:mb-4">
+                      <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
+                        <Edit className="h-4 w-4 lg:h-5 lg:w-5 text-accent-foreground" />
                       </div>
-                      <div>
-                        <h2 className="text-xl font-semibold text-foreground">Collaborative Notes</h2>
-                        <p className="text-sm text-muted-foreground">Create and edit markdown notes together</p>
+                      <div className="min-w-0 flex-1">
+                        <h2 className="text-lg lg:text-xl font-semibold text-foreground">Collaborative Notes</h2>
+                        <p className="text-xs lg:text-sm text-muted-foreground">Create and edit markdown notes together</p>
                       </div>
                     </div>
                     <MarkdownEditor roomId={room.id} userId={userId} />
                   </Card>
                 </TabsContent>
-            </Tabs>
+              </Tabs>
             </div>
           </div>
 
-          <div className="space-y-6">
+          {/* Sidebar */}
+          <div className="space-y-4 lg:space-y-6 order-1 xl:order-2">
             <RoomTimer expiresAt={room.expires_at} isPermanent={room.is_permanent} />
-            
-            <Card className="p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm">
-              <div className="flex items-center gap-3 mb-4">
-                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-primary" />
+
+            <Card className="p-4 lg:p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm">
+              <div className="flex items-center gap-3 mb-3 lg:mb-4">
+                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <Users className="h-4 w-4 lg:h-5 lg:w-5 text-primary" />
                 </div>
-                <div>
-                  <h2 className="text-xl font-semibold text-foreground">Participants</h2>
-                  <p className="text-sm text-muted-foreground">Room members and activity</p>
+                <div className="min-w-0 flex-1">
+                  <h2 className="text-lg lg:text-xl font-semibold text-foreground">Participants</h2>
+                  <p className="text-xs lg:text-sm text-muted-foreground">Room members and activity</p>
                 </div>
               </div>
               <ParticipantList roomId={room.id} hostId={room.host_id} />
             </Card>
 
             {room.room_type === "locked" && room.host_id === userId && (
-              <Card className="p-6 bg-gradient-to-r from-orange/5 to-orange/10 border-orange/20 shadow-sm">
-                <div className="flex items-center gap-3 mb-4">
-                  <div className="w-10 h-10 rounded-full bg-orange/10 flex items-center justify-center">
-                    <UserCheck className="h-5 w-5 text-orange-600" />
+              <Card className="p-4 lg:p-6 bg-gradient-to-r from-orange/5 to-orange/10 border-orange/20 shadow-sm">
+                <div className="flex items-center gap-3 mb-3 lg:mb-4">
+                  <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-orange/10 flex items-center justify-center flex-shrink-0">
+                    <UserCheck className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600" />
                   </div>
-                  <div>
-                    <h2 className="text-xl font-semibold text-foreground">Join Requests</h2>
-                    <p className="text-sm text-muted-foreground">Pending access requests</p>
+                  <div className="min-w-0 flex-1">
+                    <h2 className="text-lg lg:text-xl font-semibold text-foreground">Join Requests</h2>
+                    <p className="text-xs lg:text-sm text-muted-foreground">Pending access requests</p>
                   </div>
                 </div>
                 <JoinRequestPanel roomId={room.id} hostId={room.host_id} />
@@ -591,6 +716,45 @@ const Room = () => {
           </div>
         </div>
       </main>
+
+      {/* Mobile Bottom Navigation */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-md shadow-lg">
+        <div className="grid grid-cols-2 safe-area-inset-bottom">
+          <button
+            onClick={() => setActiveTab("files")}
+            className={`flex flex-col items-center justify-center py-3 px-4 transition-all duration-200 ${
+              activeTab === "files"
+                ? "text-primary bg-primary/10 border-t-2 border-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30 active:scale-95"
+            }`}
+          >
+            <Upload className={`h-5 w-5 mb-1 transition-transform ${
+              activeTab === "files" ? "scale-110" : ""
+            }`} />
+            <span className={`text-xs font-medium transition-all ${
+              activeTab === "files" ? "font-semibold" : ""
+            }`}>Files</span>
+          </button>
+          <button
+            onClick={() => setActiveTab("markdown")}
+            className={`flex flex-col items-center justify-center py-3 px-4 transition-all duration-200 ${
+              activeTab === "markdown"
+                ? "text-primary bg-primary/10 border-t-2 border-primary"
+                : "text-muted-foreground hover:text-foreground hover:bg-muted/30 active:scale-95"
+            }`}
+          >
+            <Edit className={`h-5 w-5 mb-1 transition-transform ${
+              activeTab === "markdown" ? "scale-110" : ""
+            }`} />
+            <span className={`text-xs font-medium transition-all ${
+              activeTab === "markdown" ? "font-semibold" : ""
+            }`}>Notes</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Add bottom padding for mobile to account for fixed navigation */}
+      <div className="lg:hidden h-16"></div>
     </div>
   );
 };
