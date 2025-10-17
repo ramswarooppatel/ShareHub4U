@@ -89,11 +89,22 @@ const Room = () => {
         .maybeSingle();
 
       if (error) throw error;
-      
+
       if (!data) {
         toast({
           title: "Room not found",
           description: "This room doesn't exist or has expired.",
+          variant: "destructive",
+        });
+        navigate("/");
+        return;
+      }
+
+      // Check if room has expired
+      if (data.expires_at && new Date(data.expires_at) < new Date() && !data.is_permanent) {
+        toast({
+          title: "Room expired",
+          description: "This room has expired and is no longer accessible.",
           variant: "destructive",
         });
         navigate("/");
@@ -106,7 +117,10 @@ const Room = () => {
       const deviceId = getDeviceId();
       const isHost = data.host_id === userId;
 
-      if (!isHost) {
+      if (isHost) {
+        // Host always has access
+        setHasAccess(true);
+      } else {
         // Check if device already has access (approved before)
         const { data: participantData } = await supabase
           .from("room_participants")
@@ -118,11 +132,10 @@ const Room = () => {
         if (participantData) {
           // Device already approved
           setHasAccess(true);
-        } else if (data.room_type === "private_key") {
-          // Check if password is provided in URL
-          const urlPassword = searchParams.get("password");
-          if (urlPassword && urlPassword === data.room_password) {
-            // Auto-grant access with URL password
+        } else {
+          // Handle different room types
+          if (data.room_type === "public") {
+            // Public rooms: auto-grant access
             await supabase.from("room_participants").insert({
               room_id: data.id,
               user_id: userId,
@@ -130,36 +143,11 @@ const Room = () => {
               role: "member",
             });
             setHasAccess(true);
-          } else {
-            setShowPasswordModal(true);
-            setHasAccess(false);
-            setLoading(false);
-            return;
-          }
-        } else if (data.room_type === "locked") {
-          // Check if auto-accept is enabled for this room
-          if (data.auto_accept_requests) {
-            // Auto-accept: add user directly to participants
-            await supabase.from("room_participants").insert({
-              room_id: data.id,
-              user_id: userId,
-              device_id: deviceId,
-              role: "member",
-            });
-            setHasAccess(true);
-          } else {
-            // Manual approval required: check existing request status
-            const { data: requestData } = await supabase
-              .from("join_requests")
-              .select("*")
-              .eq("room_id", data.id)
-              .eq("device_id", deviceId)
-              .order("created_at", { ascending: false })
-              .limit(1)
-              .maybeSingle();
-
-            if (requestData?.status === "approved") {
-              // Add to participants
+          } else if (data.room_type === "private_key") {
+            // Check if password is provided in URL
+            const urlPassword = searchParams.get("password");
+            if (urlPassword && urlPassword === data.room_password) {
+              // Auto-grant access with URL password
               await supabase.from("room_participants").insert({
                 room_id: data.id,
                 user_id: userId,
@@ -167,25 +155,66 @@ const Room = () => {
                 role: "member",
               });
               setHasAccess(true);
-            } else if (requestData?.status === "pending") {
-              // Redirect to waiting page
-              navigate(`/room/${slug}/waiting`);
-              return;
             } else {
-              setShowJoinDialog(true);
+              // Show password modal
+              setShowPasswordModal(true);
               setHasAccess(false);
               setLoading(false);
               return;
+            }
+          } else if (data.room_type === "locked") {
+            // Check if auto-accept is enabled for this room
+            if (data.auto_accept_requests) {
+              // Auto-accept: add user directly to participants
+              await supabase.from("room_participants").insert({
+                room_id: data.id,
+                user_id: userId,
+                device_id: deviceId,
+                role: "member",
+              });
+              setHasAccess(true);
+            } else {
+              // Manual approval required: check existing request status
+              const { data: requestData } = await supabase
+                .from("join_requests")
+                .select("*")
+                .eq("room_id", data.id)
+                .eq("device_id", deviceId)
+                .order("created_at", { ascending: false })
+                .limit(1)
+                .maybeSingle();
+
+              if (requestData?.status === "approved") {
+                // Add to participants
+                await supabase.from("room_participants").insert({
+                  room_id: data.id,
+                  user_id: userId,
+                  device_id: deviceId,
+                  role: "member",
+                });
+                setHasAccess(true);
+              } else if (requestData?.status === "pending") {
+                // Redirect to waiting page
+                navigate(`/room/${slug}/waiting`);
+                return;
+              } else {
+                // No request or rejected: show join dialog
+                setShowJoinDialog(true);
+                setHasAccess(false);
+                setLoading(false);
+                return;
+              }
             }
           }
         }
       }
 
       setHasAccess(true);
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       toast({
         title: "Error",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
