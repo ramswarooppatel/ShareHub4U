@@ -22,9 +22,17 @@ const Index = () => {
   const [hostPasscode, setHostPasscode] = useState("");
   const [proCode, setProCode] = useState("");
   const [joinCode, setJoinCode] = useState("");
+  const [joinPassword, setJoinPassword] = useState("");
+  const [showJoinPasswordDialog, setShowJoinPasswordDialog] = useState(false);
+  const [pendingRoomData, setPendingRoomData] = useState<{
+    room_code: string;
+    room_type: string;
+    room_password?: string;
+    auto_accept_requests?: boolean;
+  } | null>(null);
+  const [isPermanent, setIsPermanent] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
-  const [isPermanent, setIsPermanent] = useState(false); // Add this line
 
   // User authentication state
   const [currentUser, setCurrentUser] = useState<{id: string, username: string | null} | null>(null);
@@ -386,15 +394,16 @@ const Index = () => {
 
     setIsJoining(true);
     try {
-      const { data, error } = await supabase
+      // First, check if room exists and get its details
+      const { data: roomData, error: roomError } = await supabase
         .from("rooms")
-        .select("room_code")
+        .select("id, room_code, room_type, room_password, auto_accept_requests, host_id, expires_at")
         .eq("room_code", joinCode.trim().toLowerCase())
         .maybeSingle();
 
-      if (error) throw error;
+      if (roomError) throw roomError;
 
-      if (!data) {
+      if (!roomData) {
         toast({
           title: "Room not found",
           description: "No room exists with this code.",
@@ -404,16 +413,75 @@ const Index = () => {
         return;
       }
 
-      navigate(`/room/${data.room_code}`);
-    } catch (error: any) {
+      // Check if room has expired
+      if (roomData.expires_at && new Date(roomData.expires_at) < new Date()) {
+        toast({
+          title: "Room expired",
+          description: "This room has expired and is no longer accessible.",
+          variant: "destructive",
+        });
+        setIsJoining(false);
+        return;
+      }
+
+      // Handle different room types
+      if (roomData.room_type === "public") {
+        // Public rooms: direct access
+        navigate(`/room/${roomData.room_code}`);
+      } else if (roomData.room_type === "private_key") {
+        // Private key rooms: require password
+        setPendingRoomData({
+          room_code: roomData.room_code,
+          room_type: roomData.room_type,
+          room_password: roomData.room_password || undefined,
+        });
+        setShowJoinPasswordDialog(true);
+      } else if (roomData.room_type === "locked") {
+        // Locked rooms: check approval requirements
+        if (roomData.auto_accept_requests) {
+          // Auto-accept enabled: direct access
+          navigate(`/room/${roomData.room_code}`);
+        } else {
+          // Manual approval required: go to room page which will handle the request
+          navigate(`/room/${roomData.room_code}`);
+        }
+      }
+    } catch (error: unknown) {
+      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
       toast({
         title: "Error joining room",
-        description: error.message,
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
       setIsJoining(false);
     }
+  };
+
+  const handleJoinPasswordSubmit = async () => {
+    if (!pendingRoomData || !joinPassword.trim()) {
+      toast({
+        title: "Password required",
+        description: "Please enter the room password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (joinPassword !== pendingRoomData.room_password) {
+      toast({
+        title: "Incorrect password",
+        description: "The password you entered is incorrect.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Password correct, navigate to room
+    navigate(`/room/${pendingRoomData.room_code}?password=${encodeURIComponent(joinPassword)}`);
+    setShowJoinPasswordDialog(false);
+    setJoinPassword("");
+    setPendingRoomData(null);
   };
 
   return (
@@ -784,6 +852,49 @@ const Index = () => {
             Admin Panel
           </a>
         </div> */}
+
+        {/* Password Dialog for Joining Private Rooms */}
+        <Dialog open={showJoinPasswordDialog} onOpenChange={setShowJoinPasswordDialog}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle>Enter Room Password</DialogTitle>
+              <DialogDescription>
+                This room requires a password to join. Please enter the correct password.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="joinPassword">Password</Label>
+                <Input
+                  id="joinPassword"
+                  type="password"
+                  value={joinPassword}
+                  onChange={(e) => setJoinPassword(e.target.value)}
+                  placeholder="Enter room password"
+                  className="mt-2"
+                  onKeyPress={(e) => e.key === "Enter" && handleJoinPasswordSubmit()}
+                />
+              </div>
+
+              <DialogFooter>
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    setShowJoinPasswordDialog(false);
+                    setJoinPassword("");
+                    setPendingRoomData(null);
+                  }}
+                >
+                  Cancel
+                </Button>
+                <Button onClick={handleJoinPasswordSubmit}>
+                  Join Room
+                </Button>
+              </DialogFooter>
+            </div>
+          </DialogContent>
+        </Dialog>
       </div>
     </div>
   );
