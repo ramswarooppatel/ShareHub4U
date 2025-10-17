@@ -16,9 +16,11 @@ interface File {
 
 interface FileListProps {
   roomId: string;
+  onFileSelect?: (fileName: string, action: "view" | "download") => void;
+  selectedFile?: string | null;
 }
 
-export const FileList = ({ roomId }: FileListProps) => {
+export const FileList = ({ roomId, onFileSelect, selectedFile }: FileListProps) => {
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,7 +121,9 @@ export const FileList = ({ roomId }: FileListProps) => {
       {files.map((file) => (
         <div
           key={file.id}
-          className="flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors"
+          className={`flex items-center justify-between p-4 border border-border rounded-lg hover:bg-accent/50 transition-colors ${
+            selectedFile === file.file_name ? 'ring-2 ring-primary bg-accent/30' : ''
+          }`}
         >
           <div className="flex-1 min-w-0 mr-4">
             <p className="font-medium text-foreground truncate">{file.file_name}</p>
@@ -129,7 +133,10 @@ export const FileList = ({ roomId }: FileListProps) => {
           </div>
           <div className="flex gap-2">
             <Button
-              onClick={() => openPreview(file)}
+              onClick={() => {
+                onFileSelect?.(file.file_name, "view");
+                openPreview(file);
+              }}
               size="sm"
               variant="outline"
             >
@@ -137,7 +144,10 @@ export const FileList = ({ roomId }: FileListProps) => {
               View
             </Button>
             <Button
-              onClick={() => window.open(file.file_url, "_blank")}
+              onClick={() => {
+                onFileSelect?.(file.file_name, "download");
+                window.open(file.file_url, "_blank");
+              }}
               size="sm"
               variant="outline"
             >
