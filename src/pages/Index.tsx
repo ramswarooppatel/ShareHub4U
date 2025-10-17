@@ -54,7 +54,8 @@ const Index = () => {
       return;
     }
 
-    if (roomType === "locked" && (!hostUsername.trim() || !hostPasscode.trim())) {
+    // Only require credentials for locked rooms if user is not logged in
+    if (roomType === "locked" && !currentUser && (!hostUsername.trim() || !hostPasscode.trim())) {
       toast({
         title: "Credentials required",
         description: "Please enter username and passphrase for locked room.",
@@ -76,102 +77,38 @@ const Index = () => {
 
       if (existing) {
         toast({
-          title: "Slug already taken",
-          description: "Please choose a different custom slug or leave it empty for auto-generation.",
+          title: "Room code already exists",
+          description: "Please choose a different room code or leave it blank for auto-generation.",
           variant: "destructive",
         });
-        setIsCreating(false);
         return;
       }
 
-      // Get user ID - use logged-in user if available, otherwise create anonymous user
-      let userId = currentUser?.id || localStorage.getItem("user_id");
-      if (!userId) {
-        const { data: userData, error: userError } = await supabase
+      // Validate host_id: check if currentUser exists in database
+      let hostId = null;
+      if (currentUser?.id) {
+        const { data: userExists } = await supabase
           .from("users")
-          .insert({
-            username: roomType === "locked" ? hostUsername : null,
-            passcode: roomType === "locked" ? hostPasscode : null,
-          })
-          .select()
-          .single();
-        
-        if (userError) throw userError;
-        userId = userData.id;
-        localStorage.setItem("user_id", userId);
-      } else if (roomType === "locked" && !currentUser) {
-        // Update existing anonymous user with credentials for locked rooms
-        const { error: updateError } = await supabase
-          .from("users")
-          .update({
-            username: hostUsername,
-            passcode: hostPasscode,
-          })
-          .eq("id", userId);
-        
-        if (updateError) throw updateError;
-      }
-
-      // Validate and consume pro code if provided
-      let isPermanent = false;
-      if (proCode.trim()) {
-        const { data: proCodeData, error: proCodeError } = await supabase
-          .from("pro_codes")
-          .select("*")
-          .eq("code", proCode.trim())
-          .eq("is_active", true)
+          .select("id")
+          .eq("id", currentUser.id)
           .maybeSingle();
-
-        if (proCodeError) throw proCodeError;
-
-        if (!proCodeData) {
-          toast({
-            title: "Invalid pro code",
-            description: "The pro code you entered is invalid or has expired.",
-            variant: "destructive",
-          });
-          setIsCreating(false);
-          return;
-        }
-
-        if (proCodeData.rooms_created >= proCodeData.max_rooms) {
-          toast({
-            title: "Pro code limit reached",
-            description: "This pro code has reached its maximum room limit.",
-            variant: "destructive",
-          });
-          setIsCreating(false);
-          return;
-        }
-
-        if (proCodeData.credits <= 0) {
-          toast({
-            title: "No credits remaining",
-            description: "This pro code has no credits remaining.",
-            variant: "destructive",
-          });
-          setIsCreating(false);
-          return;
-        }
-
-        // Update pro code usage
-        await supabase
-          .from("pro_codes")
-          .update({
-            rooms_created: proCodeData.rooms_created + 1,
-            credits: proCodeData.credits - 1,
-          })
-          .eq("id", proCodeData.id);
-
-        isPermanent = true;
         
-        toast({
-          title: "Pro code applied!",
-          description: "Your room will be permanent and never expire.",
-        });
+        if (userExists) {
+          hostId = currentUser.id;
+        } else {
+          // User was deleted, clear local storage and show message
+          localStorage.removeItem("user_id");
+          localStorage.removeItem("username");
+          setCurrentUser(null);
+          toast({
+            title: "Account not found",
+            description: "Your account was removed. Creating room as anonymous.",
+            variant: "destructive",
+          });
+        }
       }
 
-      // Calculate expiration time
+      // Calculate expiry date
       let expiresAt = null;
       if (!isPermanent) {
         const now = new Date();
@@ -194,58 +131,49 @@ const Index = () => {
           case "30d":
             expiresAt = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
             break;
-          default:
-            expiresAt = new Date(now.getTime() + 24 * 60 * 60 * 1000); // Default to 24h
         }
       }
 
       // Create room
-      const roomData: any = {
-        room_code: roomCode,
-        host_id: userId,
-        room_type: roomType,
-        is_permanent: isPermanent,
-        pro_code_used: proCode.trim() !== "",
-        expires_at: expiresAt?.toISOString(),
-      };
-
-      if (roomType === "private_key") {
-        roomData.room_password = roomPassword;
-      }
-
-      if (roomType === "locked") {
-        roomData.auto_accept_requests = false;
-      }
-
-      const { data, error } = await supabase
+      const { data: room, error } = await supabase
         .from("rooms")
-        .insert(roomData)
+        .insert({
+          room_code: roomCode,
+          room_type: roomType,
+          host_id: hostId, // This will be null if user doesn't exist or not logged in
+          room_password: roomType === "private_key" ? roomPassword : null,
+          is_permanent: isPermanent,
+          expires_at: expiresAt,
+          file_sharing_enabled: true,
+          only_host_can_upload: false,
+          auto_accept_requests: roomType === "locked" ? false : true,
+        })
         .select()
         .single();
 
       if (error) throw error;
 
-      // Add host as participant
-      const { error: participantError } = await supabase
-        .from("room_participants")
-        .insert({
-          room_id: data.id,
-          user_id: userId,
+      // Add host as participant if logged in and user exists
+      if (hostId) {
+        await supabase.from("room_participants").insert({
+          room_id: room.id,
+          user_id: hostId,
           role: "host",
         });
-
-      if (participantError) throw participantError;
+      }
 
       toast({
-        title: "Room created!",
-        description: `Your room code is: ${roomCode}`,
+        title: "Room created successfully!",
+        description: `Room code: ${roomCode}`,
       });
 
+      // Navigate to room
       navigate(`/room/${roomCode}`);
     } catch (error: any) {
+      console.error("Error creating room:", error);
       toast({
         title: "Error creating room",
-        description: error.message,
+        description: error.message || "Something went wrong. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -672,7 +600,7 @@ const Index = () => {
                 </p>
               </div>
 
-              {roomType === "locked" && (
+              {roomType === "locked" && !currentUser && (
                 <div className="space-y-4 p-4 bg-muted/50 rounded-lg border border-border">
                   <p className="text-sm text-muted-foreground">
                     Set your credentials to approve join requests
