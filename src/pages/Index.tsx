@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity as InfinityIcon, Ticket, Clock, User, LogIn, UserPlus } from "lucide-react";
+import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity as InfinityIcon, Ticket, Clock, User, LogIn, UserPlus, Eye, EyeOff } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -43,6 +43,11 @@ const Index = () => {
   const [registerUsername, setRegisterUsername] = useState("");
   const [registerPassword, setRegisterPassword] = useState("");
   const [isAuthenticating, setIsAuthenticating] = useState(false);
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showRegisterPassword, setShowRegisterPassword] = useState(false);
+  const [showHostPasscode, setShowHostPasscode] = useState(false);
+  const [showRoomPassword, setShowRoomPassword] = useState(false);
+  const [showJoinPassword, setShowJoinPassword] = useState(false);
 
   useEffect(() => {
     initializeUser();
@@ -548,14 +553,29 @@ const Index = () => {
                       </div>
                       <div>
                         <Label htmlFor="loginPassword">Password</Label>
-                        <Input
-                          id="loginPassword"
-                          type="password"
-                          value={loginPassword}
-                          onChange={(e) => setLoginPassword(e.target.value)}
-                          placeholder="Enter your password"
-                          className="mt-2"
-                        />
+                        <div className="relative mt-2">
+                          <Input
+                            id="loginPassword"
+                            type={showLoginPassword ? "text" : "password"}
+                            value={loginPassword}
+                            onChange={(e) => setLoginPassword(e.target.value)}
+                            placeholder="Enter your password"
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                            onClick={() => setShowLoginPassword(!showLoginPassword)}
+                          >
+                            {showLoginPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                       <Button
                         onClick={loginUser}
@@ -589,14 +609,29 @@ const Index = () => {
                       </div>
                       <div>
                         <Label htmlFor="registerPassword">Password</Label>
-                        <Input
-                          id="registerPassword"
-                          type="password"
-                          value={registerPassword}
-                          onChange={(e) => setRegisterPassword(e.target.value)}
-                          placeholder="Choose a password (min 6 chars)"
-                          className="mt-2"
-                        />
+                        <div className="relative mt-2">
+                          <Input
+                            id="registerPassword"
+                            type={showRegisterPassword ? "text" : "password"}
+                            value={registerPassword}
+                            onChange={(e) => setRegisterPassword(e.target.value)}
+                            placeholder="Choose a password (min 6 chars)"
+                            className="pr-10"
+                          />
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                            onClick={() => setShowRegisterPassword(!showRegisterPassword)}
+                          >
+                            {showRegisterPassword ? (
+                              <EyeOff className="h-4 w-4 text-muted-foreground" />
+                            ) : (
+                              <Eye className="h-4 w-4 text-muted-foreground" />
+                            )}
+                          </Button>
+                        </div>
                       </div>
                       <Button
                         onClick={registerUser}
@@ -741,14 +776,29 @@ const Index = () => {
                   </div>
                   <div>
                     <Label htmlFor="hostPasscode">Passphrase</Label>
-                    <Input
-                      id="hostPasscode"
-                      type="password"
-                      value={hostPasscode}
-                      onChange={(e) => setHostPasscode(e.target.value)}
-                      placeholder="Enter your passphrase..."
-                      className="mt-2"
-                    />
+                    <div className="relative mt-2">
+                      <Input
+                        id="hostPasscode"
+                        type={showHostPasscode ? "text" : "password"}
+                        value={hostPasscode}
+                        onChange={(e) => setHostPasscode(e.target.value)}
+                        placeholder="Enter your passphrase..."
+                        className="pr-10"
+                      />
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                        onClick={() => setShowHostPasscode(!showHostPasscode)}
+                      >
+                        {showHostPasscode ? (
+                          <EyeOff className="h-4 w-4 text-muted-foreground" />
+                        ) : (
+                          <Eye className="h-4 w-4 text-muted-foreground" />
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -756,14 +806,29 @@ const Index = () => {
               {roomType === "private_key" && (
                 <div>
                   <Label htmlFor="roomPassword">Room Password</Label>
-                  <Input
-                    id="roomPassword"
-                    type="password"
-                    value={roomPassword}
-                    onChange={(e) => setRoomPassword(e.target.value)}
-                    placeholder="Enter password..."
-                    className="mt-2"
-                  />
+                  <div className="relative mt-2">
+                    <Input
+                      id="roomPassword"
+                      type={showRoomPassword ? "text" : "password"}
+                      value={roomPassword}
+                      onChange={(e) => setRoomPassword(e.target.value)}
+                      placeholder="Enter password..."
+                      className="pr-10"
+                    />
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                      onClick={() => setShowRoomPassword(!showRoomPassword)}
+                    >
+                      {showRoomPassword ? (
+                        <EyeOff className="h-4 w-4 text-muted-foreground" />
+                      ) : (
+                        <Eye className="h-4 w-4 text-muted-foreground" />
+                      )}
+                    </Button>
+                  </div>
                   <p className="text-xs text-muted-foreground mt-1">
                     Users will need this password to join
                   </p>
@@ -866,15 +931,30 @@ const Index = () => {
             <div className="space-y-4">
               <div>
                 <Label htmlFor="joinPassword">Password</Label>
-                <Input
-                  id="joinPassword"
-                  type="password"
-                  value={joinPassword}
-                  onChange={(e) => setJoinPassword(e.target.value)}
-                  placeholder="Enter room password"
-                  className="mt-2"
-                  onKeyPress={(e) => e.key === "Enter" && handleJoinPasswordSubmit()}
-                />
+                <div className="relative mt-2">
+                  <Input
+                    id="joinPassword"
+                    type={showJoinPassword ? "text" : "password"}
+                    value={joinPassword}
+                    onChange={(e) => setJoinPassword(e.target.value)}
+                    placeholder="Enter room password"
+                    className="pr-10"
+                    onKeyPress={(e) => e.key === "Enter" && handleJoinPasswordSubmit()}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+                    onClick={() => setShowJoinPassword(!showJoinPassword)}
+                  >
+                    {showJoinPassword ? (
+                      <EyeOff className="h-4 w-4 text-muted-foreground" />
+                    ) : (
+                      <Eye className="h-4 w-4 text-muted-foreground" />
+                    )}
+                  </Button>
+                </div>
               </div>
 
               <DialogFooter>
