@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,7 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity, Ticket, Clock } from "lucide-react";
+import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity as InfinityIcon, Ticket, Clock, User, LogIn, UserPlus } from "lucide-react";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -22,6 +24,20 @@ const Index = () => {
   const [joinCode, setJoinCode] = useState("");
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+
+  // User authentication state
+  const [currentUser, setCurrentUser] = useState<{id: string, username: string | null} | null>(null);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authTab, setAuthTab] = useState("login");
+  const [loginUsername, setLoginUsername] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
+  const [registerUsername, setRegisterUsername] = useState("");
+  const [registerPassword, setRegisterPassword] = useState("");
+  const [isAuthenticating, setIsAuthenticating] = useState(false);
+
+  useEffect(() => {
+    initializeUser();
+  }, []);
 
   const generateRoomCode = () => {
     return Math.random().toString(36).substring(2, 8).toLowerCase();
@@ -68,8 +84,8 @@ const Index = () => {
         return;
       }
 
-      // Create user if doesn't exist
-      let userId = localStorage.getItem("user_id");
+      // Get user ID - use logged-in user if available, otherwise create anonymous user
+      let userId = currentUser?.id || localStorage.getItem("user_id");
       if (!userId) {
         const { data: userData, error: userError } = await supabase
           .from("users")
@@ -83,8 +99,8 @@ const Index = () => {
         if (userError) throw userError;
         userId = userData.id;
         localStorage.setItem("user_id", userId);
-      } else if (roomType === "locked") {
-        // Update existing user with credentials
+      } else if (roomType === "locked" && !currentUser) {
+        // Update existing anonymous user with credentials for locked rooms
         const { error: updateError } = await supabase
           .from("users")
           .update({
@@ -237,6 +253,143 @@ const Index = () => {
     }
   };
 
+  // User authentication functions
+  const initializeUser = () => {
+    const savedUser = localStorage.getItem("current_user");
+    if (savedUser) {
+      try {
+        const user = JSON.parse(savedUser);
+        setCurrentUser(user);
+      } catch (error) {
+        localStorage.removeItem("current_user");
+      }
+    }
+  };
+
+  const loginUser = async () => {
+    if (!loginUsername.trim() || !loginPassword.trim()) {
+      toast({
+        title: "Missing credentials",
+        description: "Please enter both username and password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAuthenticating(true);
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("*")
+        .eq("username", loginUsername.trim())
+        .eq("passcode", loginPassword)
+        .single();
+
+      if (error || !data) {
+        throw new Error("Invalid username or password");
+      }
+
+      const user = { id: data.id, username: data.username };
+      setCurrentUser(user);
+      localStorage.setItem("current_user", JSON.stringify(user));
+      localStorage.setItem("user_id", data.id);
+
+      toast({
+        title: "Login successful!",
+        description: `Welcome back, ${data.username || 'User'}!`,
+      });
+
+      setShowAuthModal(false);
+      setLoginUsername("");
+      setLoginPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Login failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const registerUser = async () => {
+    if (!registerUsername.trim() || !registerPassword.trim()) {
+      toast({
+        title: "Missing information",
+        description: "Please enter both username and password.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (registerPassword.length < 6) {
+      toast({
+        title: "Password too short",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsAuthenticating(true);
+    try {
+      // Check if username already exists
+      const { data: existingUser } = await supabase
+        .from("users")
+        .select("id")
+        .eq("username", registerUsername.trim())
+        .maybeSingle();
+
+      if (existingUser) {
+        throw new Error("Username already taken");
+      }
+
+      const { data, error } = await supabase
+        .from("users")
+        .insert({
+          username: registerUsername.trim(),
+          passcode: registerPassword,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      const user = { id: data.id, username: data.username };
+      setCurrentUser(user);
+      localStorage.setItem("current_user", JSON.stringify(user));
+      localStorage.setItem("user_id", data.id);
+
+      toast({
+        title: "Registration successful!",
+        description: `Welcome, ${data.username}!`,
+      });
+
+      setShowAuthModal(false);
+      setRegisterUsername("");
+      setRegisterPassword("");
+    } catch (error: any) {
+      toast({
+        title: "Registration failed",
+        description: error.message,
+        variant: "destructive",
+      });
+    } finally {
+      setIsAuthenticating(false);
+    }
+  };
+
+  const logoutUser = () => {
+    setCurrentUser(null);
+    localStorage.removeItem("current_user");
+    localStorage.removeItem("user_id");
+    toast({
+      title: "Logged out",
+      description: "You have been logged out successfully.",
+    });
+  };
+
   const joinRoom = async () => {
     if (!joinCode.trim()) {
       toast({
@@ -286,9 +439,136 @@ const Index = () => {
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
             ShareHub4U Room
           </h1>
-          <p className="text-lg text-muted-foreground">
-            Create or join a room to share files instantly
+          <p className="text-lg text-muted-foreground mb-6">
+            Create secure, temporary rooms for file sharing and collaboration
           </p>
+
+          {/* User Authentication Section */}
+          <div className="flex items-center justify-center gap-4 mb-8">
+            {currentUser ? (
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-2 px-3 py-1 bg-primary/10 rounded-full">
+                  <User className="h-4 w-4 text-primary" />
+                  <span className="text-sm font-medium text-primary">
+                    Welcome, {currentUser.username || 'User'}!
+                  </span>
+                </div>
+                <Button
+                  onClick={logoutUser}
+                  variant="outline"
+                  size="sm"
+                >
+                  Logout
+                </Button>
+              </div>
+            ) : (
+              <Dialog open={showAuthModal} onOpenChange={setShowAuthModal}>
+                <DialogTrigger asChild>
+                  <Button variant="outline" className="flex items-center gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Login / Register
+                  </Button>
+                </DialogTrigger>
+                <DialogContent className="sm:max-w-md">
+                  <DialogHeader>
+                    <DialogTitle>User Account</DialogTitle>
+                    <DialogDescription>
+                      Create an account to be recognized across sessions and access exclusive features.
+                    </DialogDescription>
+                  </DialogHeader>
+
+                  <Tabs value={authTab} onValueChange={setAuthTab} className="w-full">
+                    <TabsList className="grid w-full grid-cols-2">
+                      <TabsTrigger value="login">Login</TabsTrigger>
+                      <TabsTrigger value="register">Register</TabsTrigger>
+                    </TabsList>
+
+                    <TabsContent value="login" className="space-y-4">
+                      <div>
+                        <Label htmlFor="loginUsername">Username</Label>
+                        <Input
+                          id="loginUsername"
+                          value={loginUsername}
+                          onChange={(e) => setLoginUsername(e.target.value)}
+                          placeholder="Enter your username"
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="loginPassword">Password</Label>
+                        <Input
+                          id="loginPassword"
+                          type="password"
+                          value={loginPassword}
+                          onChange={(e) => setLoginPassword(e.target.value)}
+                          placeholder="Enter your password"
+                          className="mt-2"
+                        />
+                      </div>
+                      <Button
+                        onClick={loginUser}
+                        disabled={isAuthenticating}
+                        className="w-full"
+                      >
+                        {isAuthenticating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Logging in...
+                          </>
+                        ) : (
+                          <>
+                            <LogIn className="mr-2 h-4 w-4" />
+                            Login
+                          </>
+                        )}
+                      </Button>
+                    </TabsContent>
+
+                    <TabsContent value="register" className="space-y-4">
+                      <div>
+                        <Label htmlFor="registerUsername">Username</Label>
+                        <Input
+                          id="registerUsername"
+                          value={registerUsername}
+                          onChange={(e) => setRegisterUsername(e.target.value)}
+                          placeholder="Choose a username"
+                          className="mt-2"
+                        />
+                      </div>
+                      <div>
+                        <Label htmlFor="registerPassword">Password</Label>
+                        <Input
+                          id="registerPassword"
+                          type="password"
+                          value={registerPassword}
+                          onChange={(e) => setRegisterPassword(e.target.value)}
+                          placeholder="Choose a password (min 6 chars)"
+                          className="mt-2"
+                        />
+                      </div>
+                      <Button
+                        onClick={registerUser}
+                        disabled={isAuthenticating}
+                        className="w-full"
+                      >
+                        {isAuthenticating ? (
+                          <>
+                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                            Creating account...
+                          </>
+                        ) : (
+                          <>
+                            <UserPlus className="mr-2 h-4 w-4" />
+                            Create Account
+                          </>
+                        )}
+                      </Button>
+                    </TabsContent>
+                  </Tabs>
+                </DialogContent>
+              </Dialog>
+            )}
+          </div>
         </div>
 
         <div className="grid md:grid-cols-2 gap-6">
@@ -440,7 +720,7 @@ const Index = () => {
 
               <div className="border-t border-border pt-4">
                 <div className="flex items-center gap-2 mb-2">
-                  <Infinity className="h-4 w-4 text-primary" />
+                  <InfinityIcon className="h-4 w-4 text-primary" />
                   <Label htmlFor="proCode">Pro Code (Optional)</Label>
                 </div>
                 <Input
@@ -512,14 +792,14 @@ const Index = () => {
           </Card>
         </div>
 
-        <div className="text-center mt-8">
+        {/* <div className="text-center mt-8">
           <a
             href="/admin"
             className="text-xs text-muted-foreground hover:text-foreground transition-colors"
           >
             Admin Panel
           </a>
-        </div>
+        </div> */}
       </div>
     </div>
   );

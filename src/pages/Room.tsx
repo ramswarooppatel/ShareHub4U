@@ -137,18 +137,9 @@ const Room = () => {
             return;
           }
         } else if (data.room_type === "locked") {
-          // Check if there's a pending/approved request
-          const { data: requestData } = await supabase
-            .from("join_requests")
-            .select("*")
-            .eq("room_id", data.id)
-            .eq("device_id", deviceId)
-            .order("created_at", { ascending: false })
-            .limit(1)
-            .maybeSingle();
-
-          if (requestData?.status === "approved") {
-            // Add to participants
+          // Check if auto-accept is enabled for this room
+          if (data.auto_accept_requests) {
+            // Auto-accept: add user directly to participants
             await supabase.from("room_participants").insert({
               room_id: data.id,
               user_id: userId,
@@ -156,15 +147,36 @@ const Room = () => {
               role: "member",
             });
             setHasAccess(true);
-          } else if (requestData?.status === "pending") {
-            // Redirect to waiting page
-            navigate(`/room/${slug}/waiting`);
-            return;
           } else {
-            setShowJoinDialog(true);
-            setHasAccess(false);
-            setLoading(false);
-            return;
+            // Manual approval required: check existing request status
+            const { data: requestData } = await supabase
+              .from("join_requests")
+              .select("*")
+              .eq("room_id", data.id)
+              .eq("device_id", deviceId)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+
+            if (requestData?.status === "approved") {
+              // Add to participants
+              await supabase.from("room_participants").insert({
+                room_id: data.id,
+                user_id: userId,
+                device_id: deviceId,
+                role: "member",
+              });
+              setHasAccess(true);
+            } else if (requestData?.status === "pending") {
+              // Redirect to waiting page
+              navigate(`/room/${slug}/waiting`);
+              return;
+            } else {
+              setShowJoinDialog(true);
+              setHasAccess(false);
+              setLoading(false);
+              return;
+            }
           }
         }
       }
