@@ -19,14 +19,20 @@ interface RoomSettingsProps {
     auto_accept_requests: boolean;
     is_permanent: boolean;
     expires_at: string | null;
+    host_id: string;
   };
+  userId: string;
   onRoomUpdate: () => void;
 }
 
-export const RoomSettings = ({ room, onRoomUpdate }: RoomSettingsProps) => {
+export const RoomSettings = ({ room, userId, onRoomUpdate }: RoomSettingsProps) => {
   const { toast } = useToast();
   const [isOpen, setIsOpen] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+
+  // Check permissions
+  const isHost = userId === room.host_id;
+  const isPublicRoom = room.room_type === "public";
 
   // Settings state
   const [roomType, setRoomType] = useState(room.room_type);
@@ -134,7 +140,10 @@ export const RoomSettings = ({ room, onRoomUpdate }: RoomSettingsProps) => {
         <DialogHeader>
           <DialogTitle>Room Settings</DialogTitle>
           <DialogDescription>
-            Configure your room settings. Changes will affect all participants.
+            {isPublicRoom 
+              ? "Configure room settings. As this is a public room, all participants can modify settings."
+              : "Configure your room settings. Only the room host can modify these settings."
+            }
           </DialogDescription>
         </DialogHeader>
 
@@ -183,6 +192,7 @@ export const RoomSettings = ({ room, onRoomUpdate }: RoomSettingsProps) => {
 
           <div className="flex items-center space-x-2">
             <input
+              title="File Sharing"
               type="checkbox"
               id="file-sharing"
               checked={fileSharingEnabled}
@@ -194,6 +204,7 @@ export const RoomSettings = ({ room, onRoomUpdate }: RoomSettingsProps) => {
 
           <div className="flex items-center space-x-2">
             <input
+              title="Host Only Upload"
               type="checkbox"
               id="host-only-upload"
               checked={onlyHostCanUpload}

@@ -284,7 +284,7 @@ const Index = () => {
       <div className="w-full max-w-4xl">
         <div className="text-center mb-12">
           <h1 className="text-4xl md:text-5xl font-bold text-foreground mb-4">
-            SlugShare Room
+            ShareHub4U Room
           </h1>
           <p className="text-lg text-muted-foreground">
             Create or join a room to share files instantly

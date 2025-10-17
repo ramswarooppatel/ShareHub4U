@@ -7,8 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Shield, Plus, Users, Settings, Trash2, UserCheck, FileText, Upload } from "lucide-react";
+import { Loader2, Shield, Plus, Users, Settings, Trash2, UserCheck, FileText, Upload, Calendar as CalendarIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface ProCode {
   id: string;
@@ -55,6 +58,22 @@ const Admin = () => {
   const [roomParticipants, setRoomParticipants] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Date picker modal state
+  const [showExpiryModal, setShowExpiryModal] = useState(false);
+  const [selectedRoomForExpiry, setSelectedRoomForExpiry] = useState<Room | null>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
+
+  // Storage usage
+  const [storageUsage, setStorageUsage] = useState<{
+    totalSize: number;
+    fileCount: number;
+    bucketSize: string;
+  }>({
+    totalSize: 0,
+    fileCount: 0,
+    bucketSize: "0 MB"
+  });
+
   useEffect(() => {
     if (isAuthenticated) {
       loadData();
@@ -63,7 +82,10 @@ const Admin = () => {
   }, [isAuthenticated]);
 
   const handleLogin = async () => {
-    if (username === "admin_4u" && password === "rpX@6065") {
+    const adminUsername = import.meta.env.VITE_ADMIN_USERNAME;
+    const adminPassword = import.meta.env.VITE_ADMIN_PASSWORD;
+
+    if (username === adminUsername && password === adminPassword) {
       setIsAuthenticated(true);
       toast({ title: "Login successful!" });
     } else {
@@ -75,9 +97,81 @@ const Admin = () => {
     }
   };
 
+  const loadStorageUsage = async () => {
+    try {
+      // Get list of files from room-files bucket
+      const { data: files, error } = await supabase.storage
+        .from("room-files")
+        .list("", {
+          limit: 1000, // Get up to 1000 files for calculation
+          sortBy: { column: "created_at", order: "desc" }
+        });
+
+      if (error) {
+        console.error("Error loading storage:", error);
+        throw error;
+      }
+
+      let totalSize = 0;
+      let fileCount = 0;
+
+      if (files) {
+        fileCount = files.length;
+        
+        // Try to get size information for first few files as sample
+        // Note: This is a workaround since Supabase list doesn't return sizes
+        if (files.length > 0) {
+          try {
+            // Get metadata for first file as sample
+            const { data: fileData } = await supabase.storage
+              .from("room-files")
+              .download(files[0].name);
+            
+            if (fileData) {
+              // Estimate total size based on average file size
+              // This is approximate since we can't get all file sizes efficiently
+              const sampleSize = fileData.size;
+              totalSize = Math.round((sampleSize * fileCount) / (1024 * 1024)); // Estimate in MB
+            }
+          } catch (sizeError) {
+            console.warn("Could not get file size information:", sizeError);
+            totalSize = 0; // Fallback
+          }
+        }
+      }
+
+      // Format size
+      const formatSize = (bytes: number) => {
+        if (bytes === 0) return "Calculating...";
+        if (bytes < 1024) return bytes + " B";
+        const k = 1024;
+        const sizes = ["B", "KB", "MB", "GB"];
+        const i = Math.floor(Math.log(bytes) / Math.log(k));
+        return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + " " + sizes[i];
+      };
+
+      setStorageUsage({
+        totalSize,
+        fileCount,
+        bucketSize: totalSize > 0 ? `~${formatSize(totalSize * 1024 * 1024)}` : `${fileCount} files`
+      });
+    } catch (error: any) {
+      console.error("Error loading storage usage:", error);
+      // Set default values on error
+      setStorageUsage({
+        totalSize: 0,
+        fileCount: 0,
+        bucketSize: "Unable to load"
+      });
+    }
+  };
+
   const loadData = async () => {
     setLoading(true);
     try {
+      // Load storage usage
+      await loadStorageUsage();
+
       // Load pro codes
       const { data: proCodesData, error: proCodesError } = await supabase
         .from("pro_codes")
@@ -156,6 +250,15 @@ const Admin = () => {
     } finally {
       setLoading(false);
     }
+  };
+
+  const formatBytes = (bytes: number, decimals = 2) => {
+    if (bytes === 0) return "0 Bytes";
+    const k = 1024;
+    const dm = decimals < 0 ? 0 : decimals;
+    const sizes = ["Bytes", "KB", "MB", "GB", "TB"];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + " " + sizes[i];
   };
 
   const setupRealtimeSubscription = () => {
@@ -464,6 +567,66 @@ const Admin = () => {
     }
   };
 
+  const toggleProCodeStatus = async (codeId: string, currentStatus: boolean) => {
+    try {
+      const { error } = await supabase
+        .from("pro_codes")
+        .update({ is_active: !currentStatus })
+        .eq("id", codeId);
+
+      if (error) throw error;
+
+      toast({
+        title: "Pro code updated",
+        description: `Pro code has been ${!currentStatus ? 'activated' : 'deactivated'}.`,
+      });
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error updating pro code",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
+  const openExpiryModal = (room: Room) => {
+    setSelectedRoomForExpiry(room);
+    setSelectedDate(room.expires_at ? new Date(room.expires_at) : undefined);
+    setShowExpiryModal(true);
+  };
+
+  const updateRoomExpiryWithDate = async () => {
+    if (!selectedRoomForExpiry || !selectedDate) return;
+
+    try {
+      const { error } = await supabase
+        .from("rooms")
+        .update({ 
+          expires_at: selectedDate.toISOString(),
+          is_permanent: false 
+        })
+        .eq("id", selectedRoomForExpiry.id);
+
+      if (error) throw error;
+
+      toast({
+        title: "Room expiry updated",
+        description: `Room ${selectedRoomForExpiry.room_code} expiry has been updated.`,
+      });
+      setShowExpiryModal(false);
+      setSelectedRoomForExpiry(null);
+      setSelectedDate(undefined);
+      loadData();
+    } catch (error: any) {
+      toast({
+        title: "Error updating room",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
+  };
+
   const removeParticipant = async (participantId: string) => {
     try {
       const { error } = await supabase
@@ -564,6 +727,53 @@ const Admin = () => {
       </header>
 
       <main className="container mx-auto px-4 py-8">
+        {/* Storage Usage Overview */}
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Upload className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Storage Usage</h3>
+            </div>
+            <div className="space-y-2">
+              <p className="text-2xl font-bold text-primary">{storageUsage.bucketSize}</p>
+              <p className="text-sm text-muted-foreground">{storageUsage.fileCount} files stored</p>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <Users className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Active Rooms</h3>
+            </div>
+            <div className="space-y-2">
+              <p className="text-2xl font-bold text-primary">{rooms.length}</p>
+              <p className="text-sm text-muted-foreground">Total rooms</p>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <UserCheck className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Total Users</h3>
+            </div>
+            <div className="space-y-2">
+              <p className="text-2xl font-bold text-primary">{users.length}</p>
+              <p className="text-sm text-muted-foreground">Registered users</p>
+            </div>
+          </Card>
+
+          <Card className="p-6">
+            <div className="flex items-center gap-2 mb-4">
+              <FileText className="h-5 w-5 text-primary" />
+              <h3 className="text-lg font-semibold text-foreground">Markdown Notes</h3>
+            </div>
+            <div className="space-y-2">
+              <p className="text-2xl font-bold text-primary">{markdownNotes.length}</p>
+              <p className="text-sm text-muted-foreground">Total notes</p>
+            </div>
+          </Card>
+        </div>
+
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
           {/* Create Pro Code */}
           <Card className="p-6">
@@ -657,6 +867,13 @@ const Admin = () => {
                       }`}>
                         {code.is_active ? 'Active' : 'Inactive'}
                       </span>
+                      <Button
+                        onClick={() => toggleProCodeStatus(code.id, code.is_active)}
+                        variant="outline"
+                        size="sm"
+                      >
+                        {code.is_active ? 'Deactivate' : 'Activate'}
+                      </Button>
                     </div>
                   </div>
                 ))}
@@ -702,13 +919,7 @@ const Admin = () => {
                         </Button>
                       )}
                       <Button
-                        onClick={() => {
-                          const newExpiry = prompt("Enter new expiry date (YYYY-MM-DD HH:mm)", 
-                            room.expires_at ? new Date(room.expires_at).toISOString().slice(0, 16) : "");
-                          if (newExpiry) {
-                            updateRoomExpiry(room.id, room.room_code, new Date(newExpiry).toISOString());
-                          }
-                        }}
+                        onClick={() => openExpiryModal(room)}
                         variant="outline"
                         size="sm"
                       >
@@ -1036,6 +1247,57 @@ const Admin = () => {
             )}
           </Card>
         </div>
+
+        {/* Room Expiry Date Picker Modal */}
+        <Dialog open={showExpiryModal} onOpenChange={setShowExpiryModal}>
+          <DialogContent className="max-w-sm">
+            <DialogHeader>
+              <DialogTitle>Update Room Expiry</DialogTitle>
+              <DialogDescription>
+                Set a new expiry date for the room. This will update the room's expiry and make it non-permanent.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-4 py-4">
+              <div>
+                <Label htmlFor="expiryDate">Expiry Date</Label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button variant="outline" className="w-full justify-start">
+                      {selectedDate ? new Intl.DateTimeFormat('default', { dateStyle: 'medium', timeStyle: 'short' }).format(selectedDate) : 'Select date and time...'}
+                      <CalendarIcon className="ml-auto h-5 w-5 text-muted-foreground" />
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-4">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      className="mt-2"
+                      initialFocus
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+            </div>
+
+            <DialogFooter>
+              <Button
+                onClick={() => setShowExpiryModal(false)}
+                variant="outline"
+                className="mr-2"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={updateRoomExpiryWithDate}
+                className="bg-primary text-primary-foreground hover:bg-primary/90"
+              >
+                Update Expiry
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </main>
     </div>
   );
