@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -7,6 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
+import { KeyboardShortcutsModal } from "@/components/ui/keyboard-shortcuts-modal";
 import { Loader2, Plus, Lock, Key, Globe, Ticket, User, LogIn, Eye, EyeOff, ArrowRight, Sparkles, Shield, Zap, Hash } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -46,9 +48,100 @@ const Index = () => {
   const [showRoomPassword, setShowRoomPassword] = useState(false);
   const [showJoinPassword, setShowJoinPassword] = useState(false);
 
+  // Keyboard shortcuts
+  const [showShortcutsModal, setShowShortcutsModal] = useState(false);
+  const joinCodeInputRef = useRef<HTMLInputElement>(null);
+  const customSlugInputRef = useRef<HTMLInputElement>(null);
+
   useEffect(() => {
     initializeUser();
   }, []);
+
+  // Define keyboard shortcuts
+  const shortcuts: KeyboardShortcut[] = [
+    {
+      key: 'j',
+      alt: true,
+      description: 'Focus join room input',
+      action: () => joinCodeInputRef.current?.focus(),
+      context: 'Navigation'
+    },
+    {
+      key: 'k',
+      alt: true,
+      description: 'Focus room name input',
+      action: () => customSlugInputRef.current?.focus(),
+      context: 'Navigation'
+    },
+    {
+      key: '1',
+      alt: true,
+      description: 'Select Public room',
+      action: () => {
+        const publicBtn = document.querySelector('[data-room-type="public"]');
+        if (publicBtn) publicBtn.click();
+      },
+      context: 'Room Settings'
+    },
+    {
+      key: '2',
+      alt: true,
+      description: 'Select Locked room',
+      action: () => {
+        const lockedBtn = document.querySelector('[data-room-type="locked"]');
+        if (lockedBtn) lockedBtn.click();
+      },
+      context: 'Room Settings'
+    },
+    {
+      key: '3',
+      alt: true,
+      description: 'Select Private room',
+      action: () => {
+        const privateBtn = document.querySelector('[data-room-type="private_key"]');
+        if (privateBtn) privateBtn.click();
+      },
+      context: 'Room Settings'
+    },
+    {
+      key: 't',
+      alt: true,
+      description: 'Focus room timing',
+      action: () => {
+        const timingSelect = document.querySelector('[data-shortcut="room-timing"]');
+        if (timingSelect) timingSelect.click();
+      },
+      context: 'Room Settings'
+    },
+    {
+      key: 'n',
+      alt: true,
+      description: 'Create new room',
+      action: () => document.querySelector('[data-shortcut="create-room"]')?.click(),
+      context: 'Rooms'
+    },
+    {
+      key: 'a',
+      alt: true,
+      description: 'Sign in / Sign out',
+      action: () => {
+        if (currentUser) {
+          logoutUser();
+        } else {
+          document.querySelector('[data-shortcut="auth"]')?.click();
+        }
+      },
+      context: 'Account'
+    },
+    {
+      key: '?',
+      description: 'Show keyboard shortcuts',
+      action: () => setShowShortcutsModal(true),
+      context: 'Help'
+    }
+  ];
+
+  useKeyboardShortcuts(shortcuts);
 
   // --- LOGIC FUNCTIONS ---
   const generateRoomCode = () => {
@@ -259,7 +352,7 @@ const Index = () => {
           ) : (
             <Dialog open={showAuthModal} onOpenChange={setShowAuthModal}>
               <DialogTrigger asChild>
-                <Button className="rounded-full shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background" size="sm">
+                <Button data-shortcut="auth" className="rounded-full shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background" size="sm">
                   <LogIn className="h-4 w-4 mr-2" />
                   Sign In
                 </Button>
@@ -344,6 +437,7 @@ const Index = () => {
               <div className="flex-1 relative flex items-center">
                 <Hash className="absolute left-6 h-7 w-7 text-muted-foreground/50" />
                 <Input
+                  ref={joinCodeInputRef}
                   placeholder="ENTER ROOM CODE"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
@@ -413,6 +507,7 @@ const Index = () => {
                           s4u/
                         </div>
                         <Input
+                          ref={customSlugInputRef}
                           id="customSlug"
                           placeholder="my-epic-room"
                           value={customSlug}
@@ -436,6 +531,7 @@ const Index = () => {
                         ].map(({ value, icon: Icon, label }) => (
                           <button
                             key={value}
+                            data-room-type={value}
                             onClick={() => setRoomType(value)}
                             className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-300 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
                               roomType === value
@@ -454,7 +550,7 @@ const Index = () => {
                     <div className="space-y-3">
                       <Label htmlFor="roomTiming" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Lifespan</Label>
                       <Select value={roomTiming} onValueChange={setRoomTiming}>
-                        <SelectTrigger className="h-[76px] rounded-2xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 text-lg font-semibold px-6">
+                        <SelectTrigger data-shortcut="room-timing" className="h-[76px] rounded-2xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 text-lg font-semibold px-6">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-white/10 bg-background/90 backdrop-blur-2xl">
@@ -516,7 +612,7 @@ const Index = () => {
                   </div>
 
                   {/* Primary Call to Action */}
-                  <Button onClick={createRoom} disabled={isCreating} className="w-full h-16 mt-8 rounded-2xl text-xl font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 group overflow-hidden relative" size="lg">
+                  <Button onClick={createRoom} disabled={isCreating} data-shortcut="create-room" className="w-full h-16 mt-8 rounded-2xl text-xl font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 group overflow-hidden relative" size="lg">
                     {/* Subtle shine effect on hover */}
                     <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite] transition-all"></div>
                     
@@ -533,6 +629,34 @@ const Index = () => {
           </div>
         </section>
       </main>
+
+      {/* Keyboard Shortcuts Display */}
+      <div className="border-t border-white/5 bg-background/20 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
+          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Keyboard Shortcuts:</span>
+            {shortcuts.map((shortcut, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <kbd className="px-2 py-1 bg-muted/50 border border-border/50 rounded text-xs font-mono">
+                  {shortcut.alt && 'Alt+'}
+                  {shortcut.ctrl && 'Ctrl+'}
+                  {shortcut.shift && 'Shift+'}
+                  {shortcut.key.toUpperCase()}
+                </kbd>
+                <span className="text-muted-foreground/80">{shortcut.description}</span>
+              </div>
+            ))}
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={() => setShowShortcutsModal(true)}
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50"
+            >
+              View All
+            </Button>
+          </div>
+        </div>
+      </div>
 
       {/* Modern Footer */}
       <footer className="mt-auto py-8 border-t border-white/5 bg-background/20 backdrop-blur-md relative z-10">
@@ -571,6 +695,13 @@ const Index = () => {
           </div>
         </DialogContent>
       </Dialog>
+      
+      {/* Keyboard Shortcuts Modal */}
+      <KeyboardShortcutsModal 
+        open={showShortcutsModal} 
+        onOpenChange={setShowShortcutsModal} 
+        shortcuts={shortcuts} 
+      />
     </div>
   );
 };

@@ -314,6 +314,7 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile }:
               />
               {searchQuery && (
                 <button
+                  data-shortcut="clear-search"
                   onClick={() => setSearchQuery("")}
                   className="absolute right-2 top-1/2 -translate-y-1/2 p-1.5 rounded-lg text-muted-foreground hover:bg-muted hover:text-foreground transition-colors"
                 >
