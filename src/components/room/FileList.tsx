@@ -50,11 +50,12 @@ interface FileListProps {
   isHost?: boolean;
   onFileSelect?: (fileName: string, action: "view" | "download") => void;
   selectedFile?: string | null;
+  refreshTrigger?: number;
 }
 
 type FilterCategory = "all" | "pdf" | "word" | "excel" | "powerpoint" | "images" | "video" | "audio" | "archives" | "text" | "other";
 
-export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile }: FileListProps) => {
+export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, refreshTrigger }: FileListProps) => {
   const { toast } = useToast();
   const [files, setFiles] = useState<File[]>([]);
   const [loading, setLoading] = useState(true);
@@ -73,7 +74,7 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile }:
     loadFiles();
     const cleanup = setupRealtimeSubscription();
     return cleanup;
-  }, [roomId]);
+  }, [roomId, refreshTrigger]);
 
   const loadFiles = async () => {
     try {
@@ -444,17 +445,15 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile }:
                       <Download className="h-4 w-4" />
                     </Button>
                     
-                    {(isHost || file.uploaded_by === userId) && (
-                      <Button
-                        onClick={() => setDeleteFile(file)}
-                        size="icon"
-                        variant="ghost"
-                        className="h-9 w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-95 transition-all sm:ml-1"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    )}
+                    <Button
+                      onClick={() => setDeleteFile(file)}
+                      size="icon"
+                      variant="ghost"
+                      className="h-9 w-9 rounded-xl text-muted-foreground hover:text-destructive hover:bg-destructive/10 active:scale-95 transition-all sm:ml-1"
+                      title="Delete"
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </div>

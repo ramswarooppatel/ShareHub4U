@@ -9,6 +9,7 @@ interface FileUploadProps {
   roomId: string;
   userId: string;
   disabled?: boolean;
+  onFileUploaded?: () => void;
 }
 
 interface FileWithProgress {
@@ -18,7 +19,7 @@ interface FileWithProgress {
   error?: string;
 }
 
-export const FileUpload = ({ roomId, userId, disabled }: FileUploadProps) => {
+export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUploadProps) => {
   const { toast } = useToast();
   const [uploading, setUploading] = useState(false);
   const [selectedFiles, setSelectedFiles] = useState<FileWithProgress[]>([]);
@@ -146,6 +147,9 @@ export const FileUpload = ({ roomId, userId, disabled }: FileUploadProps) => {
         });
 
         if (dbError) throw dbError;
+
+        // Call callback to refresh list instantly
+        onFileUploaded?.();
 
         // Mark as completed
         setSelectedFiles(prev => prev.map((f, idx) =>
