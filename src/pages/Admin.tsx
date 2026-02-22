@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
+import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
 import { Loader2, Shield, Plus, Users, Settings, Trash2, UserCheck, FileText, Upload, Calendar as CalendarIcon } from "lucide-react";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
@@ -47,6 +48,60 @@ const Admin = () => {
   const [credits, setCredits] = useState("10");
   const [maxRooms, setMaxRooms] = useState("5");
   const [isCreating, setIsCreating] = useState(false);
+
+  // Define keyboard shortcuts for admin page
+  const adminShortcuts: KeyboardShortcut[] = [
+    {
+      key: 'l',
+      alt: true,
+      description: 'Login to admin',
+      action: () => {
+        if (!isAuthenticated) {
+          document.querySelector('[data-shortcut="admin-login"]')?.click();
+        }
+      },
+      context: 'Authentication'
+    },
+    {
+      key: 'c',
+      alt: true,
+      description: 'Create pro code',
+      action: () => {
+        if (isAuthenticated) {
+          document.querySelector('[data-shortcut="create-pro-code"]')?.click();
+        }
+      },
+      context: 'Pro Codes'
+    },
+    {
+      key: 'p',
+      alt: true,
+      description: 'Make room permanent',
+      action: () => {
+        if (isAuthenticated) {
+          // Find the first "Make Permanent" button
+          const permanentBtn = document.querySelector('button:has(.lucide-zap)');
+          if (permanentBtn) permanentBtn.click();
+        }
+      },
+      context: 'Rooms'
+    },
+    {
+      key: 'e',
+      alt: true,
+      description: 'Edit room expiry',
+      action: () => {
+        if (isAuthenticated) {
+          // Find the first "Edit Expiry" button
+          const expiryBtn = document.querySelector('button:has(.lucide-calendar)');
+          if (expiryBtn) expiryBtn.click();
+        }
+      },
+      context: 'Rooms'
+    }
+  ];
+
+  useKeyboardShortcuts(adminShortcuts);
 
   // Data
   const [proCodes, setProCodes] = useState<ProCode[]>([]);
@@ -725,6 +780,7 @@ const Admin = () => {
             </div>
 
             <Button
+              data-shortcut="admin-login"
               onClick={handleLogin}
               disabled={isLoggingIn}
               className="w-full"
@@ -860,6 +916,7 @@ const Admin = () => {
               </div>
 
               <Button
+                data-shortcut="create-pro-code"
                 onClick={createProCode}
                 disabled={isCreating}
                 className="w-full"

@@ -5,6 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
+import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
 import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Zap, Shield, Lock, Globe } from "lucide-react";
 import { FileUpload } from "@/components/room/FileUpload";
 import { FileList } from "@/components/room/FileList";
@@ -47,6 +48,139 @@ const Room = () => {
   const [refreshing, setRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("files");
+
+  // Define keyboard shortcuts for room functionality
+  const roomShortcuts: KeyboardShortcut[] = [
+    {
+      key: 'f',
+      alt: true,
+      description: 'Switch to Files tab',
+      action: () => document.querySelector('[data-shortcut="files-tab"]')?.click(),
+      context: 'Navigation'
+    },
+    {
+      key: 'm',
+      alt: true,
+      description: 'Switch to Notes tab',
+      action: () => document.querySelector('[data-shortcut="notes-tab"]')?.click(),
+      context: 'Navigation'
+    },
+    {
+      key: 'u',
+      alt: true,
+      description: 'Upload files',
+      action: () => {
+        // Trigger file upload dialog
+        const uploadArea = document.querySelector('[data-shortcut="upload-files"]');
+        if (uploadArea && activeTab === 'files') uploadArea.click();
+      },
+      context: 'Files'
+    },
+    {
+      key: 'd',
+      alt: true,
+      description: 'Download selected file',
+      action: () => {
+        // Find download button for selected/previewed file
+        const downloadBtn = document.querySelector('[data-shortcut="download-file"]') || document.querySelector('button:has(.lucide-download)');
+        if (downloadBtn && activeTab === 'files') downloadBtn.click();
+      },
+      context: 'Files'
+    },
+    {
+      key: 'v',
+      alt: true,
+      description: 'Preview selected file',
+      action: () => {
+        // Find preview button for selected file
+        const previewBtn = document.querySelector('[data-shortcut="preview-file"]') || document.querySelector('button:has(.lucide-eye)');
+        if (previewBtn && activeTab === 'files') previewBtn.click();
+      },
+      context: 'Files'
+    },
+    {
+      key: 'x',
+      alt: true,
+      description: 'Delete selected file',
+      action: () => {
+        // Find delete button for selected file
+        const deleteBtn = document.querySelector('[data-shortcut="delete-file"]') || document.querySelector('button:has(.lucide-trash2)');
+        if (deleteBtn && activeTab === 'files') deleteBtn.click();
+      },
+      context: 'Files'
+    },
+    {
+      key: 'g',
+      alt: true,
+      description: 'Clear search & filters',
+      action: () => {
+        // Clear search and reset filters
+        const clearBtn = document.querySelector('[data-shortcut="clear-search"]') || document.querySelector('button:has(.lucide-x)');
+        if (clearBtn && activeTab === 'files') clearBtn.click();
+      },
+      context: 'Files'
+    },
+    {
+      key: 'e',
+      alt: true,
+      description: 'Switch to Edit mode (Notes)',
+      action: () => {
+        const editTab = document.querySelector('[data-shortcut="edit-mode"]');
+        if (editTab && activeTab === 'markdown') editTab.click();
+      },
+      context: 'Notes'
+    },
+    {
+      key: 'p',
+      alt: true,
+      description: 'Switch to Preview mode (Notes)',
+      action: () => {
+        const previewTab = document.querySelector('[data-shortcut="preview-mode"]');
+        if (previewTab && activeTab === 'markdown') previewTab.click();
+      },
+      context: 'Notes'
+    },
+    {
+      key: 's',
+      alt: true,
+      description: 'Save note',
+      action: () => {
+        const saveBtn = document.querySelector('[data-shortcut="save-note"]');
+        if (saveBtn && activeTab === 'markdown') saveBtn.click();
+      },
+      context: 'Notes'
+    },
+    {
+      key: 'c',
+      alt: true,
+      description: 'Copy room link',
+      action: () => document.querySelector('[data-shortcut="copy-link"]')?.click(),
+      context: 'Room'
+    },
+    {
+      key: 'h',
+      alt: true,
+      description: 'Share room with password',
+      action: () => document.querySelector('[data-shortcut="share-room"]')?.click(),
+      context: 'Room'
+    },
+    {
+      key: 'r',
+      alt: true,
+      description: 'Refresh room data',
+      action: () => document.querySelector('[data-shortcut="refresh-room"]')?.click(),
+      context: 'Room'
+    },
+    {
+      key: 'q',
+      alt: true,
+      description: 'Leave room',
+      action: () => document.querySelector('[data-shortcut="leave-room"]')?.click(),
+      context: 'Room'
+    }
+  ];
+
+  useKeyboardShortcuts(roomShortcuts);
 
   useEffect(() => { initializeUser(); }, []);
   useEffect(() => { if (userId) loadRoom(); }, [slug, userId]);
@@ -233,19 +367,19 @@ const Room = () => {
               </div>
             )}
             
-            <Button onClick={copyRoomLink} variant="ghost" size="sm" className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all rounded-lg active:scale-95">
+            <Button onClick={copyRoomLink} data-shortcut="copy-link" variant="ghost" size="sm" className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all rounded-lg active:scale-95">
               {copied ? <Check className="h-4 w-4 mr-2 text-emerald-500" /> : <Copy className="h-4 w-4 mr-2" />}
               <span className="text-xs font-medium">{copied ? "Copied" : "Copy"}</span>
             </Button>
             
-            <Button onClick={shareRoomWithPassword} variant="ghost" size="sm" className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all rounded-lg active:scale-95">
+            <Button onClick={shareRoomWithPassword} data-shortcut="share-room" variant="ghost" size="sm" className="h-9 px-3 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all rounded-lg active:scale-95">
               <Share2 className="h-4 w-4 mr-2" />
               <span className="text-xs font-medium">Share</span>
             </Button>
             
             <div className="w-px h-5 bg-border/50 mx-1.5" />
             
-            <Button onClick={refreshRoomData} variant="ghost" size="icon" disabled={refreshing} className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all rounded-lg active:scale-95">
+            <Button onClick={refreshRoomData} data-shortcut="refresh-room" variant="ghost" size="icon" disabled={refreshing} className="h-9 w-9 text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-all rounded-lg active:scale-95">
               <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
             </Button>
 
@@ -253,7 +387,7 @@ const Room = () => {
               <RoomSettings room={room} userId={userId} onRoomUpdate={() => loadRoom()} />
             )}
             
-            <Button onClick={() => navigate("/")} variant="ghost" size="sm" className="h-9 px-3 ml-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all rounded-lg active:scale-95 group">
+            <Button onClick={() => navigate("/")} data-shortcut="leave-room" variant="ghost" size="sm" className="h-9 px-3 ml-1 text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all rounded-lg active:scale-95 group">
               <LogOut className="h-4 w-4 mr-2 group-hover:-translate-x-0.5 transition-transform" />
               <span className="text-xs font-medium">Leave</span>
             </Button>
@@ -327,14 +461,16 @@ const Room = () => {
               {/* Smooth segmented control style tabs */}
               <TabsList className="w-full sm:w-auto self-start bg-muted/40 p-1.5 rounded-xl border border-border/30 mb-6 grid grid-cols-2 h-12 relative overflow-hidden">
                 <TabsTrigger 
-                  value="files" 
+                  value="files"
+                  data-shortcut="files-tab"
                   className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-primary transition-all duration-300 text-sm font-semibold z-10"
                 >
                   <Upload className="h-4 w-4 mr-2" />
                   Files
                 </TabsTrigger>
                 <TabsTrigger 
-                  value="markdown" 
+                  value="markdown"
+                  data-shortcut="notes-tab"
                   className="rounded-lg data-[state=active]:bg-background data-[state=active]:shadow-md data-[state=active]:text-primary transition-all duration-300 text-sm font-semibold z-10"
                 >
                   <Edit className="h-4 w-4 mr-2" />
@@ -407,6 +543,26 @@ const Room = () => {
           </div>
         </div>
       </main>
+
+      {/* Keyboard Shortcuts Display */}
+      <div className="border-t border-white/5 bg-background/20 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-3">
+          <div className="flex flex-wrap items-center justify-center gap-3 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground">Room Shortcuts:</span>
+            {roomShortcuts.map((shortcut, index) => (
+              <div key={index} className="flex items-center gap-1">
+                <kbd className="px-2 py-1 bg-muted/50 border border-border/50 rounded text-xs font-mono">
+                  {shortcut.alt && 'Alt+'}
+                  {shortcut.ctrl && 'Ctrl+'}
+                  {shortcut.shift && 'Shift+'}
+                  {shortcut.key.toUpperCase()}
+                </kbd>
+                <span className="text-muted-foreground/80">{shortcut.description}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
 
       {/* Smooth Mobile Bottom Navigation (Floating Pill Style) */}
       <div className="lg:hidden fixed bottom-6 left-1/2 -translate-x-1/2 w-[90%] max-w-sm z-50 animate-in slide-in-from-bottom-10 duration-500">

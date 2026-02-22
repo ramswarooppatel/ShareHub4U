@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
+import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
 import { Loader2, CheckCircle2, Clock, XCircle, ArrowLeft, ArrowRight, Zap } from "lucide-react";
 
 export default function Waiting() {
@@ -11,6 +12,30 @@ export default function Waiting() {
   const navigate = useNavigate();
   const { toast } = useToast();
   const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
+
+  // Define keyboard shortcuts for waiting page
+  const waitingShortcuts: KeyboardShortcut[] = [
+    {
+      key: 'b',
+      alt: true,
+      description: 'Go back to home',
+      action: () => document.querySelector('[data-shortcut="back-home"]')?.click() || navigate("/"),
+      context: 'Navigation'
+    },
+    {
+      key: 'j',
+      alt: true,
+      description: 'Join room (when approved)',
+      action: () => {
+        if (status === "approved") {
+          document.querySelector('[data-shortcut="join-room"]')?.click() || navigate(`/room/${code}`);
+        }
+      },
+      context: 'Room'
+    }
+  ];
+
+  useKeyboardShortcuts(waitingShortcuts);
 
   useEffect(() => {
     if (!code) return;
@@ -85,7 +110,7 @@ export default function Waiting() {
                   <h1 className="text-xl font-bold text-success mb-2">Approved!</h1>
                   <p className="text-sm text-muted-foreground">You have been approved to join the room.</p>
                 </div>
-                <Button onClick={() => navigate(`/room/${code}`)} className="w-full gap-2">
+                <Button data-shortcut="join-room" onClick={() => navigate(`/room/${code}`)} className="w-full gap-2">
                   Enter Room <ArrowRight className="h-4 w-4" />
                 </Button>
               </>
@@ -100,7 +125,7 @@ export default function Waiting() {
                   <h1 className="text-xl font-bold mb-2">Request Rejected</h1>
                   <p className="text-sm text-muted-foreground">Your join request was not approved.</p>
                 </div>
-                <Button onClick={() => navigate("/")} variant="outline" className="w-full gap-2">
+                <Button data-shortcut="back-home" onClick={() => navigate("/")} variant="outline" className="w-full gap-2">
                   <ArrowLeft className="h-4 w-4" /> Back to Home
                 </Button>
               </>

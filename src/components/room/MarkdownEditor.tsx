@@ -393,10 +393,10 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
 
               <Tabs value={editorMode} onValueChange={(v) => setEditorMode(v as "edit" | "preview")} className="w-full">
                 <TabsList className="w-full sm:w-auto grid grid-cols-2 h-11 bg-muted/40 p-1 rounded-xl border border-border/30">
-                  <TabsTrigger value="edit" className="text-xs font-bold uppercase tracking-wider rounded-lg data-[state=active]:shadow-sm transition-all duration-300">
+                  <TabsTrigger value="edit" data-shortcut="edit-mode" className="text-xs font-bold uppercase tracking-wider rounded-lg data-[state=active]:shadow-sm transition-all duration-300">
                     <Edit className="h-3.5 w-3.5 mr-2" /> Edit
                   </TabsTrigger>
-                  <TabsTrigger value="preview" className="text-xs font-bold uppercase tracking-wider rounded-lg data-[state=active]:shadow-sm transition-all duration-300">
+                  <TabsTrigger value="preview" data-shortcut="preview-mode" className="text-xs font-bold uppercase tracking-wider rounded-lg data-[state=active]:shadow-sm transition-all duration-300">
                     <Eye className="h-3.5 w-3.5 mr-2" /> Preview
                   </TabsTrigger>
                 </TabsList>
@@ -440,7 +440,8 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
             {/* Save Button Footer */}
             <div className="shrink-0 p-4 border-t border-border/30 bg-muted/10 flex justify-end">
               <Button 
-                onClick={saveNote} 
+                onClick={saveNote}
+                data-shortcut="save-note"
                 disabled={saving || (!title.trim() && !content.trim())} 
                 className="w-full sm:w-auto shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 rounded-xl h-11 px-8 text-sm font-bold"
               >

@@ -181,6 +181,7 @@ export const FileUpload = ({ roomId, userId, disabled }: FileUploadProps) => {
     <div className="space-y-3">
       {selectedFiles.length === 0 ? (
         <div
+          data-shortcut="upload-files"
           onDragEnter={handleDrag}
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
