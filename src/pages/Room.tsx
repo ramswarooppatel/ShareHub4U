@@ -5,7 +5,7 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, X, ChevronDown, ChevronUp } from "lucide-react";
+import { Upload, Download, Users, LogOut, Copy, Check, FileText, Edit, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Zap } from "lucide-react";
 import { FileUpload } from "@/components/room/FileUpload";
 import { FileList } from "@/components/room/FileList";
 import { ParticipantList } from "@/components/room/ParticipantList";
@@ -46,39 +46,18 @@ const Room = () => {
   const [hasAccess, setHasAccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
-  const [isRoomInfoExpanded, setIsRoomInfoExpanded] = useState(false);
   const [activeTab, setActiveTab] = useState("files");
 
-  useEffect(() => {
-    initializeUser();
-  }, []);
-
-  useEffect(() => {
-    if (userId) {
-      loadRoom();
-    }
-  }, [slug, userId]);
+  useEffect(() => { initializeUser(); }, []);
+  useEffect(() => { if (userId) loadRoom(); }, [slug, userId]);
 
   const initializeUser = async () => {
-    // Create or get user
     const storedUserId = localStorage.getItem("user_id");
     if (storedUserId) {
       setUserId(storedUserId);
     } else {
-      const { data: userData, error: userError } = await supabase
-        .from("users")
-        .insert({})
-        .select()
-        .single();
-      
-      if (userError) {
-        toast({
-          title: "Error",
-          description: userError.message,
-          variant: "destructive",
-        });
-        return;
-      }
+      const { data: userData, error: userError } = await supabase.from("users").insert({}).select().single();
+      if (userError) { toast({ title: "Error", description: userError.message, variant: "destructive" }); return; }
       localStorage.setItem("user_id", userData.id);
       setUserId(userData.id);
     }
@@ -86,301 +65,108 @@ const Room = () => {
 
   const loadRoom = async () => {
     try {
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("room_code", slug)
-        .maybeSingle();
-
+      const { data, error } = await supabase.from("rooms").select("*").eq("room_code", slug).maybeSingle();
       if (error) throw error;
-
-      if (!data) {
-        toast({
-          title: "Room not found",
-          description: "This room doesn't exist or has expired.",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
-
-      // Check if room has expired
-      if (data.expires_at && new Date(data.expires_at) < new Date() && !data.is_permanent) {
-        toast({
-          title: "Room expired",
-          description: "This room has expired and is no longer accessible.",
-          variant: "destructive",
-        });
-        navigate("/");
-        return;
-      }
+      if (!data) { toast({ title: "Room not found", description: "This room doesn't exist or has expired.", variant: "destructive" }); navigate("/"); return; }
+      if (data.expires_at && new Date(data.expires_at) < new Date() && !data.is_permanent) { toast({ title: "Room expired", variant: "destructive" }); navigate("/"); return; }
 
       setRoom(data);
-
-      // Check if user needs to request access
       const deviceId = getDeviceId();
       const isHost = data.host_id === userId;
 
-      if (isHost) {
-        // Host always has access
-        setHasAccess(true);
-      } else {
-        // Check if device already has access (approved before)
-        const { data: participantData } = await supabase
-          .from("room_participants")
-          .select("*")
-          .eq("room_id", data.id)
-          .eq("device_id", deviceId)
-          .maybeSingle();
-
-        if (participantData) {
-          // Device already approved
-          setHasAccess(true);
-        } else {
-          // Handle different room types
+      if (isHost) { setHasAccess(true); }
+      else {
+        const { data: participantData } = await supabase.from("room_participants").select("*").eq("room_id", data.id).eq("device_id", deviceId).maybeSingle();
+        if (participantData) { setHasAccess(true); }
+        else {
           if (data.room_type === "public") {
-            // Public rooms: auto-grant access
-            await supabase.from("room_participants").insert({
-              room_id: data.id,
-              user_id: userId,
-              device_id: deviceId,
-              role: "member",
-            });
+            await supabase.from("room_participants").insert({ room_id: data.id, user_id: userId, device_id: deviceId, role: "member" });
             setHasAccess(true);
           } else if (data.room_type === "private_key") {
-            // Check if password is provided in URL
             const urlPassword = searchParams.get("password");
             if (urlPassword && urlPassword === data.room_password) {
-              // Auto-grant access with URL password
-              await supabase.from("room_participants").insert({
-                room_id: data.id,
-                user_id: userId,
-                device_id: deviceId,
-                role: "member",
-              });
+              await supabase.from("room_participants").insert({ room_id: data.id, user_id: userId, device_id: deviceId, role: "member" });
               setHasAccess(true);
-            } else {
-              // Show password modal
-              setShowPasswordModal(true);
-              setHasAccess(false);
-              setLoading(false);
-              return;
-            }
+            } else { setShowPasswordModal(true); setHasAccess(false); setLoading(false); return; }
           } else if (data.room_type === "locked") {
-            // Check if auto-accept is enabled for this room
             if (data.auto_accept_requests) {
-              // Auto-accept: add user directly to participants
-              await supabase.from("room_participants").insert({
-                room_id: data.id,
-                user_id: userId,
-                device_id: deviceId,
-                role: "member",
-              });
+              await supabase.from("room_participants").insert({ room_id: data.id, user_id: userId, device_id: deviceId, role: "member" });
               setHasAccess(true);
             } else {
-              // Manual approval required: check existing request status
-              const { data: requestData } = await supabase
-                .from("join_requests")
-                .select("*")
-                .eq("room_id", data.id)
-                .eq("device_id", deviceId)
-                .order("created_at", { ascending: false })
-                .limit(1)
-                .maybeSingle();
-
+              const { data: requestData } = await supabase.from("join_requests").select("*").eq("room_id", data.id).eq("device_id", deviceId).order("created_at", { ascending: false }).limit(1).maybeSingle();
               if (requestData?.status === "approved") {
-                // Add to participants
-                await supabase.from("room_participants").insert({
-                  room_id: data.id,
-                  user_id: userId,
-                  device_id: deviceId,
-                  role: "member",
-                });
+                await supabase.from("room_participants").insert({ room_id: data.id, user_id: userId, device_id: deviceId, role: "member" });
                 setHasAccess(true);
-              } else if (requestData?.status === "pending") {
-                // Redirect to waiting page
-                navigate(`/room/${slug}/waiting`);
-                return;
-              } else {
-                // No request or rejected: show join dialog
-                setShowJoinDialog(true);
-                setHasAccess(false);
-                setLoading(false);
-                return;
-              }
+              } else if (requestData?.status === "pending") { navigate(`/room/${slug}/waiting`); return; }
+              else { setShowJoinDialog(true); setHasAccess(false); setLoading(false); return; }
             }
           }
         }
       }
-
       setHasAccess(true);
     } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : "Unknown error occurred";
-      toast({
-        title: "Error",
-        description: errorMessage,
-        variant: "destructive",
-      });
-    } finally {
-      setLoading(false);
-    }
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      toast({ title: "Error", description: errorMessage, variant: "destructive" });
+    } finally { setLoading(false); }
   };
-
 
   const handlePasswordSubmit = async (password: string) => {
     if (!room) return;
-
-    if (password !== room.room_password) {
-      toast({
-        title: "Incorrect password",
-        description: "The password you entered is incorrect.",
-        variant: "destructive",
-      });
-      return;
-    }
-
+    if (password !== room.room_password) { toast({ title: "Incorrect password", variant: "destructive" }); return; }
     const deviceId = getDeviceId();
-    
-    // Add to participants with device tracking
-    await supabase.from("room_participants").insert({
-      room_id: room.id,
-      user_id: userId,
-      device_id: deviceId,
-      role: "member",
-    });
-
-    setHasAccess(true);
-    setShowPasswordModal(false);
+    await supabase.from("room_participants").insert({ room_id: room.id, user_id: userId, device_id: deviceId, role: "member" });
+    setHasAccess(true); setShowPasswordModal(false);
     toast({ title: "Access granted!" });
   };
 
-  const handleJoinRequest = async (data: { anonymousName?: string; message?: string; password?: string }) => {
+  const handleJoinRequest = async (data: { anonymousName?: string; message?: string }) => {
     if (!room) return;
-
     try {
-      if (room.room_type === "locked") {
-        const deviceId = getDeviceId();
-        
-        // Submit join request
-        const { error } = await supabase.from("join_requests").insert({
-          room_id: room.id,
-          user_id: userId,
-          anonymous_name: data.anonymousName,
-          message: data.message,
-          device_id: deviceId,
-          status: "pending",
-        });
-
-        if (error) throw error;
-
-        toast({
-          title: "Request sent!",
-          description: "Redirecting to waiting page...",
-        });
-        
-        // Redirect to waiting page
-        navigate(`/room/${slug}/waiting`);
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+      const deviceId = getDeviceId();
+      const { error } = await supabase.from("join_requests").insert({ room_id: room.id, user_id: userId, anonymous_name: data.anonymousName, message: data.message, device_id: deviceId, status: "pending" });
+      if (error) throw error;
+      toast({ title: "Request sent!", description: "Redirecting to waiting page..." });
+      navigate(`/room/${slug}/waiting`);
+    } catch (error: any) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
   };
 
   const copyRoomLink = () => {
-    const link = window.location.href;
-    navigator.clipboard.writeText(link);
+    navigator.clipboard.writeText(window.location.href);
     setCopied(true);
-    toast({
-      title: "Link copied!",
-      description: "Share this link with others to invite them.",
-    });
+    toast({ title: "Link copied!" });
     setTimeout(() => setCopied(false), 2000);
   };
 
   const shareRoomWithPassword = () => {
     if (!room) return;
-    
     let shareUrl = `${window.location.origin}/room/${room.room_code}`;
-    
-    if (room.room_type === "private_key" && room.room_password) {
-      shareUrl += `?password=${encodeURIComponent(room.room_password)}`;
-    }
-    
+    if (room.room_type === "private_key" && room.room_password) shareUrl += `?password=${encodeURIComponent(room.room_password)}`;
     navigator.clipboard.writeText(shareUrl);
     setCopied(true);
-    toast({
-      title: "Share link copied!",
-      description: room.room_type === "private_key" 
-        ? "Password-protected link copied. Recipients can join directly!"
-        : "Room link copied. Share with others to invite them.",
-    });
+    toast({ title: "Share link copied!", description: room.room_type === "private_key" ? "Password-protected link copied." : "Room link copied." });
     setTimeout(() => setCopied(false), 2000);
   };
 
   const refreshRoomData = async () => {
     if (!room) return;
-    
     setRefreshing(true);
     try {
-      // Force reload room data
-      const { data, error } = await supabase
-        .from("rooms")
-        .select("*")
-        .eq("room_code", slug)
-        .maybeSingle();
-
-      if (error) throw error;
-      
-      if (data) {
-        setRoom(data);
-        toast({
-          title: "Data refreshed!",
-          description: "Room data has been updated.",
-        });
-      }
-    } catch (error: any) {
-      toast({
-        title: "Error refreshing data",
-        description: error.message,
-        variant: "destructive",
-      });
-    } finally {
-      setRefreshing(false);
-    }
+      const { data } = await supabase.from("rooms").select("*").eq("room_code", slug).maybeSingle();
+      if (data) { setRoom(data); toast({ title: "Refreshed!" }); }
+    } catch {} finally { setRefreshing(false); }
   };
 
-  const leaveRoom = () => {
-    navigate("/");
-  };
-
+  const isHost = room?.host_id === userId;
 
   if (!hasAccess && room) {
     return (
       <>
-        <JoinRequestDialog
-          isOpen={showJoinDialog}
-          onClose={() => navigate("/")}
-          onSubmit={handleJoinRequest}
-          roomType={room.room_type}
-          requiresPassword={false}
-        />
-        <PasswordEntryModal
-          isOpen={showPasswordModal}
-          onClose={() => navigate("/")}
-          onSubmit={handlePasswordSubmit}
-        />
-        <div className="min-h-screen bg-background flex items-center justify-center">
-          <Card className="p-8 text-center">
-            <h2 className="text-2xl font-bold mb-2">Access Required</h2>
-            <p className="text-muted-foreground">
-              {room.room_type === "locked" 
-                ? "This room requires approval from the host."
-                : "This room is password protected."}
-            </p>
+        <JoinRequestDialog isOpen={showJoinDialog} onClose={() => navigate("/")} onSubmit={handleJoinRequest} roomType={room.room_type} requiresPassword={false} />
+        <PasswordEntryModal isOpen={showPasswordModal} onClose={() => navigate("/")} onSubmit={handlePasswordSubmit} />
+        <div className="min-h-screen bg-background flex items-center justify-center p-4">
+          <Card className="p-8 text-center max-w-sm">
+            <h2 className="text-xl font-bold mb-2">Access Required</h2>
+            <p className="text-sm text-muted-foreground">{room.room_type === "locked" ? "This room requires host approval." : "This room is password protected."}</p>
           </Card>
         </div>
       </>
@@ -390,7 +176,12 @@ const Room = () => {
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
-        <div className="text-lg text-muted-foreground">Loading room...</div>
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center animate-pulse">
+            <Zap className="h-4 w-4 text-primary-foreground" />
+          </div>
+          <p className="text-sm text-muted-foreground">Loading room...</p>
+        </div>
       </div>
     );
   }
@@ -398,317 +189,165 @@ const Room = () => {
   if (!room) return null;
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-muted/20 flex flex-col">
-      {/* Mobile Header */}
-      <header className="border-b border-border/50 bg-card/80 backdrop-blur-sm shadow-sm lg:hidden">
-        <div className="px-4 py-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3 min-w-0 flex-1">
-              <div className="w-8 h-8 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center flex-shrink-0">
-                <Users className="h-4 w-4 text-primary" />
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="border-b border-border/30 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
+        <div className="max-w-7xl mx-auto px-4 h-14 flex items-center justify-between">
+          {/* Left */}
+          <div className="flex items-center gap-3 min-w-0">
+            <button onClick={() => navigate("/")} className="flex items-center gap-2 hover:opacity-80 transition-opacity flex-shrink-0">
+              <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+                <Zap className="h-3.5 w-3.5 text-primary-foreground" />
               </div>
-              <div className="min-w-0 flex-1">
-                <h1 className="text-lg font-bold text-foreground truncate">
-                  Room: {room.room_code}
-                </h1>
-                <div className="flex items-center gap-2 mt-0.5">
-                  <div className={`w-2 h-2 rounded-full ${
-                    room.room_type === "public" ? "bg-green-500" :
-                    room.room_type === "locked" ? "bg-yellow-500" : "bg-blue-500"
-                  }`} />
-                  <p className="text-xs text-muted-foreground truncate">
-                    {room.room_type === "public" && "🌐 Public"}
-                    {room.room_type === "locked" && "🔒 Locked"}
-                    {room.room_type === "private_key" && "🔑 Password"}
-                  </p>
-                </div>
+            </button>
+            <div className="h-5 w-px bg-border/50" />
+            <div className="min-w-0">
+              <div className="flex items-center gap-2">
+                <h1 className="font-semibold text-foreground truncate text-sm">{room.room_code}</h1>
+                <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${
+                  room.room_type === "public" ? "bg-success" : room.room_type === "locked" ? "bg-warning" : "bg-primary"
+                }`} />
+                <span className="text-xs text-muted-foreground hidden sm:block">
+                  {room.room_type === "public" ? "Public" : room.room_type === "locked" ? "Locked" : "Private"}
+                </span>
               </div>
-            </div>
-            <div className="flex items-center gap-2">
-              <Button
-                onClick={refreshRoomData}
-                variant="ghost"
-                size="sm"
-                disabled={refreshing}
-                className="h-8 w-8 p-0"
-              >
-                <RefreshCw className={`h-4 w-4 ${refreshing ? 'animate-spin' : ''}`} />
-              </Button>
-              <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                    <Menu className="h-4 w-4" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent side="right" className="w-80">
-                  <div className="space-y-6 pt-6">
-                    {/* Room Info */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-foreground">Room Information</h3>
-                      <div className="space-y-2 text-sm">
-                        <p><span className="font-medium">Type:</span> {
-                          room.room_type === "public" && "🌐 Public room - Anyone can join"
-                        }{
-                          room.room_type === "locked" && "🔒 Locked room - Requires approval"
-                        }{
-                          room.room_type === "private_key" && "🔑 Password protected room"
-                        }</p>
-                        {room.room_type === "private_key" && room.room_password && room.host_id === userId && (
-                          <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
-                            <span className="font-medium">Password:</span>
-                            <code className="text-xs bg-background px-2 py-1 rounded font-mono flex-1">
-                              {showPassword ? room.room_password : "••••••••"}
-                            </code>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setShowPassword(!showPassword)}
-                              className="h-6 w-6 p-0"
-                            >
-                              {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                            </Button>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Actions */}
-                    <div className="space-y-3">
-                      <h3 className="font-semibold text-foreground">Actions</h3>
-                      <div className="space-y-2">
-                        <Button
-                          onClick={copyRoomLink}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start"
-                        >
-                          {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                          {copied ? "Copied!" : "Copy Link"}
-                        </Button>
-                        <Button
-                          onClick={shareRoomWithPassword}
-                          variant="default"
-                          size="sm"
-                          className="w-full justify-start"
-                        >
-                          <Share2 className="h-4 w-4 mr-2" />
-                          Share Room
-                        </Button>
-                        {room && (room.room_type === "public" || userId === room.host_id) && (
-                          <RoomSettings room={room} userId={userId} onRoomUpdate={() => loadRoom()} />
-                        )}
-                        <Button
-                          onClick={leaveRoom}
-                          variant="outline"
-                          size="sm"
-                          className="w-full justify-start hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
-                        >
-                          <LogOut className="h-4 w-4 mr-2" />
-                          Leave Room
-                        </Button>
-                      </div>
-                    </div>
-                  </div>
-                </SheetContent>
-              </Sheet>
             </div>
           </div>
-        </div>
-      </header>
 
-      {/* Desktop Header */}
-      <header className="hidden lg:block border-b border-border/50 bg-card/80 backdrop-blur-sm shadow-sm">
-        <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between flex-wrap gap-6">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-3 mb-2">
-                <div className="w-10 h-10 rounded-full bg-gradient-to-br from-primary/20 to-primary/10 flex items-center justify-center">
-                  <Users className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h1 className="text-3xl font-bold text-foreground bg-gradient-to-r from-foreground to-foreground/80 bg-clip-text">
-                    Room: {room.room_code}
-                  </h1>
-                  <div className="flex items-center gap-2 mt-1">
-                    <div className={`w-2 h-2 rounded-full ${
-                      room.room_type === "public" ? "bg-green-500" :
-                      room.room_type === "locked" ? "bg-yellow-500" : "bg-blue-500"
-                    }`} />
-                    <p className="text-sm text-muted-foreground font-medium">
-                      {room.room_type === "public" && "🌐 Public room - Anyone can join"}
-                      {room.room_type === "locked" && "🔒 Locked room - Requires approval"}
-                      {room.room_type === "private_key" && "🔑 Password protected room"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              {room.room_type === "private_key" && room.room_password && room.host_id === userId && (
-                <div className="flex items-center gap-3 mt-3 p-3 bg-muted/50 rounded-lg border border-border/50">
-                  <span className="text-sm font-medium text-muted-foreground">Room Password:</span>
-                  <code className="text-sm bg-background px-3 py-1 rounded-md font-mono border border-border/50 min-w-0 flex-1">
-                    {showPassword ? room.room_password : "••••••••"}
-                  </code>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setShowPassword(!showPassword)}
-                    className="h-8 w-8 p-0 hover:bg-muted"
-                  >
-                    {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+          {/* Right */}
+          <div className="flex items-center gap-1.5">
+            {/* Desktop actions */}
+            <div className="hidden md:flex items-center gap-1.5">
+              {room.room_type === "private_key" && room.room_password && isHost && (
+                <div className="flex items-center gap-1 px-2 py-1 bg-muted/50 rounded-md mr-1">
+                  <code className="text-xs font-mono text-muted-foreground">{showPassword ? room.room_password : "••••"}</code>
+                  <Button variant="ghost" size="sm" onClick={() => setShowPassword(!showPassword)} className="h-5 w-5 p-0">
+                    {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
                   </Button>
                 </div>
               )}
-            </div>
-            <div className="flex items-center gap-3 flex-wrap">
-              <Button
-                onClick={copyRoomLink}
-                variant="outline"
-                size="sm"
-                className="hover:bg-black/100"
-              >
-                {copied ? <Check className="h-4 w-4 mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
-                {copied ? "Copied!" : "Copy Link"}
+              <Button onClick={copyRoomLink} variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
+                {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+                <span className="hidden lg:inline">{copied ? "Copied" : "Copy"}</span>
               </Button>
-              <Button
-                onClick={shareRoomWithPassword}
-                variant="default"
-                size="sm"
-                className="bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 shadow-sm"
-              >
-                <Share2 className="h-4 w-4 mr-2" />
-                Share Room
+              <Button onClick={shareRoomWithPassword} variant="ghost" size="sm" className="h-8 gap-1.5 text-xs">
+                <Share2 className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Share</span>
               </Button>
-              <Button
-                onClick={refreshRoomData}
-                variant="outline"
-                size="sm"
-                disabled={refreshing}
-                className="hover:bg-blue-600/100"
-              >
-                <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} />
-                {refreshing ? "Refreshing..." : "Refresh"}
+              <Button onClick={refreshRoomData} variant="ghost" size="sm" disabled={refreshing} className="h-8 w-8 p-0">
+                <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               </Button>
-              {room && (room.room_type === "public" || userId === room.host_id) && (
+              {(room.room_type === "public" || isHost) && (
                 <RoomSettings room={room} userId={userId} onRoomUpdate={() => loadRoom()} />
               )}
-              <Button
-                onClick={leaveRoom}
-                variant="outline"
-                size="sm"
-                className="hover:bg-destructive/10 hover:border-destructive/20 hover:text-destructive"
-              >
-                <LogOut className="h-4 w-4 mr-2" />
-                Leave
+              <Button onClick={() => navigate("/")} variant="ghost" size="sm" className="h-8 gap-1.5 text-xs text-muted-foreground hover:text-destructive">
+                <LogOut className="h-3.5 w-3.5" />
+                <span className="hidden lg:inline">Leave</span>
               </Button>
             </div>
+
+            {/* Mobile menu */}
+            <Sheet open={isMobileMenuOpen} onOpenChange={setIsMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="sm" className="h-8 w-8 p-0 md:hidden">
+                  <Menu className="h-4 w-4" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-72">
+                <div className="space-y-4 pt-6">
+                  <div className="space-y-1">
+                    <p className="text-xs text-muted-foreground font-medium uppercase tracking-wider">Room</p>
+                    <p className="font-semibold">{room.room_code}</p>
+                  </div>
+                  {room.room_type === "private_key" && room.room_password && isHost && (
+                    <div className="flex items-center gap-2 p-2 bg-muted/50 rounded-lg">
+                      <span className="text-xs text-muted-foreground">Password:</span>
+                      <code className="text-xs font-mono flex-1">{showPassword ? room.room_password : "••••"}</code>
+                      <Button variant="ghost" size="sm" onClick={() => setShowPassword(!showPassword)} className="h-6 w-6 p-0">
+                        {showPassword ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </Button>
+                    </div>
+                  )}
+                  <div className="space-y-1">
+                    <Button onClick={() => { copyRoomLink(); setIsMobileMenuOpen(false); }} variant="ghost" size="sm" className="w-full justify-start">
+                      <Copy className="h-4 w-4 mr-2" /> Copy Link
+                    </Button>
+                    <Button onClick={() => { shareRoomWithPassword(); setIsMobileMenuOpen(false); }} variant="ghost" size="sm" className="w-full justify-start">
+                      <Share2 className="h-4 w-4 mr-2" /> Share Room
+                    </Button>
+                    <Button onClick={() => { refreshRoomData(); setIsMobileMenuOpen(false); }} variant="ghost" size="sm" className="w-full justify-start" disabled={refreshing}>
+                      <RefreshCw className={`h-4 w-4 mr-2 ${refreshing ? 'animate-spin' : ''}`} /> Refresh
+                    </Button>
+                    {(room.room_type === "public" || isHost) && (
+                      <div className="pt-1">
+                        <RoomSettings room={room} userId={userId} onRoomUpdate={() => loadRoom()} />
+                      </div>
+                    )}
+                    <Button onClick={() => navigate("/")} variant="ghost" size="sm" className="w-full justify-start text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <LogOut className="h-4 w-4 mr-2" /> Leave Room
+                    </Button>
+                  </div>
+                </div>
+              </SheetContent>
+            </Sheet>
           </div>
         </div>
       </header>
 
-      {/* Main Content */}
-      <main className="flex-1 container mx-auto px-4 py-4 lg:py-8">
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 lg:gap-8">
-          {/* Main Content Area */}
-          <div className="xl:col-span-2 order-2 xl:order-1">
-            <div className="bg-card/50 backdrop-blur-sm rounded-xl border border-border/50 shadow-sm overflow-hidden">
-              <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-                <div className="border-b border-border/50 bg-muted/30 px-4 lg:px-6 py-3 lg:py-4">
-                  <TabsList className="grid w-full grid-cols-2 bg-background/50 p-1 h-10 lg:h-11">
-                    <TabsTrigger value="files" className="flex items-center gap-2 text-xs lg:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                      <Upload className="h-3 w-3 lg:h-4 lg:w-4" />
-                      <span className="font-medium">Files</span>
-                    </TabsTrigger>
-                    <TabsTrigger value="markdown" className="flex items-center gap-2 text-xs lg:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground">
-                      <Edit className="h-3 w-3 lg:h-4 lg:w-4" />
-                      <span className="font-medium">Notes</span>
-                    </TabsTrigger>
-                  </TabsList>
-                </div>
+      {/* Main */}
+      <main className="flex-1 max-w-7xl mx-auto w-full px-4 py-4 lg:py-6">
+        <div className="grid grid-cols-1 xl:grid-cols-4 gap-4 lg:gap-6">
+          {/* Content */}
+          <div className="xl:col-span-3 order-2 xl:order-1">
+            <Tabs value={activeTab} onValueChange={setActiveTab}>
+              <TabsList className="grid w-full grid-cols-2 h-10 bg-muted/30 p-1">
+                <TabsTrigger value="files" className="gap-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Upload className="h-4 w-4" />
+                  Files
+                </TabsTrigger>
+                <TabsTrigger value="markdown" className="gap-2 text-sm data-[state=active]:bg-background data-[state=active]:shadow-sm">
+                  <Edit className="h-4 w-4" />
+                  Notes
+                </TabsTrigger>
+              </TabsList>
 
-                <TabsContent value="files" className="p-4 lg:p-6 space-y-4 lg:space-y-6">
-                  {room.file_sharing_enabled && (
-                    <Card className="p-4 lg:p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm">
-                      <div className="flex items-center gap-3 mb-3 lg:mb-4">
-                        <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                          <Upload className="h-4 w-4 lg:h-5 lg:w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0 flex-1">
-                          <h2 className="text-lg lg:text-xl font-semibold text-foreground">Upload Files</h2>
-                          <p className="text-xs lg:text-sm text-muted-foreground">Share files with room participants</p>
-                        </div>
-                      </div>
-                      <FileUpload
-                        roomId={room.id}
-                        userId={userId}
-                        disabled={room.only_host_can_upload && room.host_id !== userId}
-                      />
-                      {room.only_host_can_upload && room.host_id !== userId && (
-                        <p className="text-xs lg:text-sm text-muted-foreground mt-2">
-                          Only the host can upload files in this room.
-                        </p>
-                      )}
-                    </Card>
-                  )}
+              <TabsContent value="files" className="mt-4 space-y-4">
+                {room.file_sharing_enabled && (
+                  <FileUpload
+                    roomId={room.id}
+                    userId={userId}
+                    disabled={room.only_host_can_upload && !isHost}
+                  />
+                )}
+                {room.only_host_can_upload && !isHost && (
+                  <p className="text-xs text-muted-foreground text-center">Only the host can upload files.</p>
+                )}
+                <FileList roomId={room.id} userId={userId} isHost={isHost} />
+              </TabsContent>
 
-                  <Card className="p-4 lg:p-6 bg-gradient-to-r from-secondary/5 to-secondary/10 border-secondary/20 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3 lg:mb-4">
-                      <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-secondary/10 flex items-center justify-center flex-shrink-0">
-                        <Download className="h-4 w-4 lg:h-5 lg:w-5 text-secondary-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h2 className="text-lg lg:text-xl font-semibold text-foreground">Shared Files</h2>
-                        <p className="text-xs lg:text-sm text-muted-foreground">Download files shared in this room</p>
-                      </div>
-                    </div>
-                    <FileList roomId={room.id} />
-                  </Card>
-                </TabsContent>
-
-                <TabsContent value="markdown" className="p-4 lg:p-6">
-                  <Card className="p-4 lg:p-6 bg-gradient-to-r from-accent/5 to-accent/10 border-accent/20 shadow-sm">
-                    <div className="flex items-center gap-3 mb-3 lg:mb-4">
-                      <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-accent/10 flex items-center justify-center flex-shrink-0">
-                        <Edit className="h-4 w-4 lg:h-5 lg:w-5 text-accent-foreground" />
-                      </div>
-                      <div className="min-w-0 flex-1">
-                        <h2 className="text-lg lg:text-xl font-semibold text-foreground">Collaborative Notes</h2>
-                        <p className="text-xs lg:text-sm text-muted-foreground">Create and edit markdown notes together</p>
-                      </div>
-                    </div>
-                    <MarkdownEditor roomId={room.id} userId={userId} />
-                  </Card>
-                </TabsContent>
-              </Tabs>
-            </div>
+              <TabsContent value="markdown" className="mt-4">
+                <MarkdownEditor roomId={room.id} userId={userId} />
+              </TabsContent>
+            </Tabs>
           </div>
 
           {/* Sidebar */}
-          <div className="space-y-4 lg:space-y-6 order-1 xl:order-2">
+          <div className="space-y-4 order-1 xl:order-2">
             <RoomTimer expiresAt={room.expires_at} isPermanent={room.is_permanent} />
 
-            <Card className="p-4 lg:p-6 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20 shadow-sm">
-              <div className="flex items-center gap-3 mb-3 lg:mb-4">
-                <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-primary/10 flex items-center justify-center flex-shrink-0">
-                  <Users className="h-4 w-4 lg:h-5 lg:w-5 text-primary" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <h2 className="text-lg lg:text-xl font-semibold text-foreground">Participants</h2>
-                  <p className="text-xs lg:text-sm text-muted-foreground">Room members and activity</p>
-                </div>
+            <Card className="p-4 border-border/50">
+              <div className="flex items-center gap-2 mb-3">
+                <Users className="h-4 w-4 text-primary" />
+                <h3 className="text-sm font-semibold text-foreground">Participants</h3>
               </div>
               <ParticipantList roomId={room.id} hostId={room.host_id} />
             </Card>
 
-            {room.room_type === "locked" && room.host_id === userId && (
-              <Card className="p-4 lg:p-6 bg-gradient-to-r from-orange/5 to-orange/10 border-orange/20 shadow-sm">
-                <div className="flex items-center gap-3 mb-3 lg:mb-4">
-                  <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-full bg-orange/10 flex items-center justify-center flex-shrink-0">
-                    <UserCheck className="h-4 w-4 lg:h-5 lg:w-5 text-orange-600" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h2 className="text-lg lg:text-xl font-semibold text-foreground">Join Requests</h2>
-                    <p className="text-xs lg:text-sm text-muted-foreground">Pending access requests</p>
-                  </div>
+            {room.room_type === "locked" && isHost && (
+              <Card className="p-4 border-border/50">
+                <div className="flex items-center gap-2 mb-3">
+                  <UserCheck className="h-4 w-4 text-warning" />
+                  <h3 className="text-sm font-semibold text-foreground">Join Requests</h3>
                 </div>
                 <JoinRequestPanel roomId={room.id} hostId={room.host_id} />
               </Card>
@@ -717,44 +356,30 @@ const Room = () => {
         </div>
       </main>
 
-      {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/50 bg-card/95 backdrop-blur-md shadow-lg">
-        <div className="grid grid-cols-2 safe-area-inset-bottom">
+      {/* Mobile Bottom Nav */}
+      <div className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border/30 bg-card/95 backdrop-blur-md">
+        <div className="grid grid-cols-2">
           <button
             onClick={() => setActiveTab("files")}
-            className={`flex flex-col items-center justify-center py-3 px-4 transition-all duration-200 ${
-              activeTab === "files"
-                ? "text-primary bg-primary/10 border-t-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/30 active:scale-95"
+            className={`flex flex-col items-center justify-center py-2.5 transition-colors ${
+              activeTab === "files" ? "text-primary" : "text-muted-foreground"
             }`}
           >
-            <Upload className={`h-5 w-5 mb-1 transition-transform ${
-              activeTab === "files" ? "scale-110" : ""
-            }`} />
-            <span className={`text-xs font-medium transition-all ${
-              activeTab === "files" ? "font-semibold" : ""
-            }`}>Files</span>
+            <Upload className="h-5 w-5 mb-0.5" />
+            <span className="text-[10px] font-medium">Files</span>
           </button>
           <button
             onClick={() => setActiveTab("markdown")}
-            className={`flex flex-col items-center justify-center py-3 px-4 transition-all duration-200 ${
-              activeTab === "markdown"
-                ? "text-primary bg-primary/10 border-t-2 border-primary"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted/30 active:scale-95"
+            className={`flex flex-col items-center justify-center py-2.5 transition-colors ${
+              activeTab === "markdown" ? "text-primary" : "text-muted-foreground"
             }`}
           >
-            <Edit className={`h-5 w-5 mb-1 transition-transform ${
-              activeTab === "markdown" ? "scale-110" : ""
-            }`} />
-            <span className={`text-xs font-medium transition-all ${
-              activeTab === "markdown" ? "font-semibold" : ""
-            }`}>Notes</span>
+            <Edit className="h-5 w-5 mb-0.5" />
+            <span className="text-[10px] font-medium">Notes</span>
           </button>
         </div>
       </div>
-
-      {/* Add bottom padding for mobile to account for fixed navigation */}
-      <div className="lg:hidden h-16"></div>
+      <div className="lg:hidden h-14" />
     </div>
   );
 };
