@@ -1,6 +1,5 @@
 import { useEffect, useState } from "react";
 import { Clock, Infinity } from "lucide-react";
-import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 
 interface RoomTimerProps {
@@ -15,57 +14,49 @@ export const RoomTimer = ({ expiresAt, isPermanent }: RoomTimerProps) => {
     if (isPermanent || !expiresAt) return;
 
     const calculateTimeLeft = () => {
-      const now = new Date().getTime();
-      const expiry = new Date(expiresAt).getTime();
-      const difference = expiry - now;
+      const difference = new Date(expiresAt).getTime() - Date.now();
+      if (difference <= 0) { setTimeLeft("Expired"); return; }
 
-      if (difference <= 0) {
-        setTimeLeft("Expired");
-        return;
-      }
+      const d = Math.floor(difference / (1000 * 60 * 60 * 24));
+      const h = Math.floor((difference % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+      const m = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
+      const s = Math.floor((difference % (1000 * 60)) / 1000);
 
-      const hours = Math.floor(difference / (1000 * 60 * 60));
-      const minutes = Math.floor((difference % (1000 * 60 * 60)) / (1000 * 60));
-      const seconds = Math.floor((difference % (1000 * 60)) / 1000);
-
-      setTimeLeft(`${hours}h ${minutes}m ${seconds}s`);
+      setTimeLeft(d > 0 ? `${d}d ${h}h ${m}m` : `${h}h ${m}m ${s}s`);
     };
 
     calculateTimeLeft();
     const interval = setInterval(calculateTimeLeft, 1000);
-
     return () => clearInterval(interval);
   }, [expiresAt, isPermanent]);
 
   if (isPermanent) {
     return (
-      <Card className="p-3 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <div className="flex items-center gap-2">
-          <Infinity className="h-5 w-5 text-primary" />
-          <div>
-            <p className="text-sm font-medium">Permanent Room</p>
-            <p className="text-xs text-muted-foreground">This room never expires</p>
-          </div>
+      <div className="flex items-center gap-2 p-3 rounded-xl bg-primary/5 border border-primary/10">
+        <Infinity className="h-4 w-4 text-primary flex-shrink-0" />
+        <div>
+          <p className="text-xs font-medium text-foreground">Permanent Room</p>
+          <p className="text-[10px] text-muted-foreground">Never expires</p>
         </div>
-      </Card>
+      </div>
     );
   }
 
+  const isExpired = timeLeft === "Expired";
+
   return (
-    <Card className="p-3 bg-gradient-to-r from-orange-500/10 to-orange-500/5 border-orange-500/20">
-      <div className="flex items-center gap-2">
-        <Clock className="h-5 w-5 text-orange-500" />
-        <div className="flex-1">
-          <p className="text-sm font-medium">Time Remaining</p>
-          <p className="text-xs text-muted-foreground">
-            {timeLeft === "Expired" ? (
-              <Badge variant="destructive">Expired</Badge>
-            ) : (
-              <span className="font-mono text-orange-500">{timeLeft}</span>
-            )}
-          </p>
-        </div>
+    <div className={`flex items-center gap-2 p-3 rounded-xl border ${
+      isExpired ? "bg-destructive/5 border-destructive/10" : "bg-warning/5 border-warning/10"
+    }`}>
+      <Clock className={`h-4 w-4 flex-shrink-0 ${isExpired ? "text-destructive" : "text-warning"}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-medium text-foreground">Time Remaining</p>
+        {isExpired ? (
+          <Badge variant="destructive" className="text-[10px] h-4 mt-0.5">Expired</Badge>
+        ) : (
+          <p className="text-xs font-mono text-warning">{timeLeft}</p>
+        )}
       </div>
-    </Card>
+    </div>
   );
 };

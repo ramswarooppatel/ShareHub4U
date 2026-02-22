@@ -4,164 +4,110 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, CheckCircle2, Clock } from "lucide-react";
+import { Loader2, CheckCircle2, Clock, XCircle, ArrowLeft, ArrowRight, Zap } from "lucide-react";
 
 export default function Waiting() {
   const { code } = useParams();
   const navigate = useNavigate();
   const { toast } = useToast();
   const [status, setStatus] = useState<"pending" | "approved" | "rejected">("pending");
-  const [requestId, setRequestId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!code) return;
-
     const deviceId = localStorage.getItem("device_id");
-    if (!deviceId) {
-      navigate(`/room/${code}`);
-      return;
-    }
+    if (!deviceId) { navigate(`/room/${code}`); return; }
 
-    // Check existing request status
     const checkRequest = async () => {
-      const { data, error } = await supabase
-        .from("join_requests")
-        .select("*")
-        .eq("device_id", deviceId)
-        .order("created_at", { ascending: false })
-        .limit(1)
-        .single();
-
-      if (error) {
-        console.error("Error checking request:", error);
-        return;
-      }
-
+      const { data } = await supabase
+        .from("join_requests").select("*").eq("device_id", deviceId)
+        .order("created_at", { ascending: false }).limit(1).single();
       if (data) {
-        setRequestId(data.id);
         setStatus(data.status as "pending" | "approved" | "rejected");
-        
-        if (data.status === "approved") {
-          toast({
-            title: "Request Approved!",
-            description: "You can now join the room.",
-          });
-        }
+        if (data.status === "approved") toast({ title: "Request Approved!", description: "You can now join the room." });
       }
     };
 
     checkRequest();
 
-    // Set up real-time subscription
     const channel = supabase
       .channel(`join-request-${deviceId}`)
-      .on(
-        "postgres_changes",
-        {
-          event: "UPDATE",
-          schema: "public",
-          table: "join_requests",
-          filter: `device_id=eq.${deviceId}`,
-        },
+      .on("postgres_changes", { event: "UPDATE", schema: "public", table: "join_requests", filter: `device_id=eq.${deviceId}` },
         (payload) => {
           const newStatus = payload.new.status as "pending" | "approved" | "rejected";
           setStatus(newStatus);
-          
-          if (newStatus === "approved") {
-            toast({
-              title: "✅ Request Approved!",
-              description: "You can now join the room.",
-            });
-          } else if (newStatus === "rejected") {
-            toast({
-              title: "Request Rejected",
-              description: "Your join request was not approved.",
-              variant: "destructive",
-            });
-          }
+          if (newStatus === "approved") toast({ title: "✅ Approved!", description: "You can now join the room." });
+          else if (newStatus === "rejected") toast({ title: "Request rejected", variant: "destructive" });
         }
-      )
-      .subscribe();
+      ).subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   }, [code, navigate, toast]);
 
-  const handleJoinRoom = () => {
-    if (status === "approved") {
-      navigate(`/room/${code}`);
-    }
-  };
-
   return (
-    <div className="min-h-screen flex items-center justify-center bg-background p-4">
-      <Card className="w-full max-w-md p-8">
-        <div className="text-center space-y-6">
-          {status === "pending" && (
-            <>
-              <div className="flex justify-center">
-                <div className="relative">
-                  <Clock className="h-16 w-16 text-primary animate-pulse" />
-                  <Loader2 className="h-8 w-8 text-primary absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 animate-spin" />
-                </div>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold mb-2">Waiting for Approval</h1>
-                <p className="text-muted-foreground">
-                  Your join request has been sent to the room host.
-                  <br />
-                  Please wait for approval...
-                </p>
-              </div>
-              <div className="flex items-center justify-center gap-2 text-sm text-muted-foreground">
-                <div className="h-2 w-2 bg-primary rounded-full animate-pulse" />
-                <span>Checking status in real-time</span>
-              </div>
-            </>
-          )}
-
-          {status === "approved" && (
-            <>
-              <div className="flex justify-center">
-                <CheckCircle2 className="h-16 w-16 text-green-500" />
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold mb-2 text-green-500">Request Approved!</h1>
-                <p className="text-muted-foreground">
-                  You have been approved to join the room.
-                </p>
-              </div>
-              <Button onClick={handleJoinRoom} size="lg" className="w-full">
-                View Room
-              </Button>
-            </>
-          )}
-
-          {status === "rejected" && (
-            <>
-              <div className="flex justify-center">
-                <div className="h-16 w-16 rounded-full bg-destructive/10 flex items-center justify-center">
-                  <span className="text-3xl">❌</span>
-                </div>
-              </div>
-              <div>
-                <h1 className="text-2xl font-bold mb-2">Request Rejected</h1>
-                <p className="text-muted-foreground">
-                  Your join request was not approved by the host.
-                </p>
-              </div>
-              <Button
-                onClick={() => navigate("/")}
-                variant="outline"
-                className="w-full"
-              >
-                Back to Home
-              </Button>
-            </>
-          )}
+    <div className="min-h-screen bg-background flex flex-col">
+      {/* Header */}
+      <header className="border-b border-border/30 bg-card/50 backdrop-blur-sm">
+        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center gap-3">
+          <button onClick={() => navigate("/")} className="flex items-center gap-2 hover:opacity-80">
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+              <Zap className="h-3.5 w-3.5 text-primary-foreground" />
+            </div>
+            <span className="font-bold text-sm">ShareHub4U</span>
+          </button>
         </div>
-      </Card>
+      </header>
+
+      <div className="flex-1 flex items-center justify-center p-4">
+        <Card className="w-full max-w-sm p-8 border-border/50">
+          <div className="text-center space-y-6">
+            {status === "pending" && (
+              <>
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-primary/10 flex items-center justify-center">
+                  <Clock className="h-8 w-8 text-primary animate-pulse" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold mb-2">Waiting for Approval</h1>
+                  <p className="text-sm text-muted-foreground">Your request has been sent to the host. Please wait...</p>
+                </div>
+                <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground">
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                  <span>Listening for updates</span>
+                </div>
+              </>
+            )}
+
+            {status === "approved" && (
+              <>
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-success/10 flex items-center justify-center">
+                  <CheckCircle2 className="h-8 w-8 text-success" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold text-success mb-2">Approved!</h1>
+                  <p className="text-sm text-muted-foreground">You have been approved to join the room.</p>
+                </div>
+                <Button onClick={() => navigate(`/room/${code}`)} className="w-full gap-2">
+                  Enter Room <ArrowRight className="h-4 w-4" />
+                </Button>
+              </>
+            )}
+
+            {status === "rejected" && (
+              <>
+                <div className="w-16 h-16 mx-auto rounded-2xl bg-destructive/10 flex items-center justify-center">
+                  <XCircle className="h-8 w-8 text-destructive" />
+                </div>
+                <div>
+                  <h1 className="text-xl font-bold mb-2">Request Rejected</h1>
+                  <p className="text-sm text-muted-foreground">Your join request was not approved.</p>
+                </div>
+                <Button onClick={() => navigate("/")} variant="outline" className="w-full gap-2">
+                  <ArrowLeft className="h-4 w-4" /> Back to Home
+                </Button>
+              </>
+            )}
+          </div>
+        </Card>
+      </div>
     </div>
   );
 }
