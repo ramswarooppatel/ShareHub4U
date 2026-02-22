@@ -144,7 +144,15 @@ export type Database = {
           max_rooms?: number
           rooms_created?: number
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "pro_codes_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       room_files: {
         Row: {
@@ -327,10 +335,7 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      delete_expired_rooms: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
+      delete_expired_rooms: { Args: never; Returns: undefined }
     }
     Enums: {
       [_ in never]: never
