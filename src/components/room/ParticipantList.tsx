@@ -40,8 +40,12 @@ export const ParticipantList = ({ roomId, hostId }: ParticipantListProps) => {
           table: 'room_participants',
           filter: `room_id=eq.${roomId}`
         },
-        () => {
-          loadParticipants();
+        (payload) => {
+          if (payload.eventType === 'INSERT') {
+            setParticipantCount(prev => prev + 1);
+          } else if (payload.eventType === 'DELETE') {
+            setParticipantCount(prev => Math.max(1, prev - 1));
+          }
         }
       )
       .subscribe();

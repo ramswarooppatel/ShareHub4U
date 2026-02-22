@@ -7,13 +7,15 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, DoorOpen, Plus, Lock, Key, Globe, Infinity as InfinityIcon, Ticket, Clock, User, LogIn, UserPlus, Eye, EyeOff, ArrowRight, Sparkles, Shield, Zap } from "lucide-react";
+import { Loader2, Plus, Lock, Key, Globe, Ticket, User, LogIn, Eye, EyeOff, ArrowRight, Sparkles, Shield, Zap, Hash } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
+  
+  // State
   const [customSlug, setCustomSlug] = useState("");
   const [roomType, setRoomType] = useState("public");
   const [roomTiming, setRoomTiming] = useState("24h");
@@ -24,12 +26,7 @@ const Index = () => {
   const [joinCode, setJoinCode] = useState("");
   const [joinPassword, setJoinPassword] = useState("");
   const [showJoinPasswordDialog, setShowJoinPasswordDialog] = useState(false);
-  const [pendingRoomData, setPendingRoomData] = useState<{
-    room_code: string;
-    room_type: string;
-    room_password?: string;
-    auto_accept_requests?: boolean;
-  } | null>(null);
+  const [pendingRoomData, setPendingRoomData] = useState<{ room_code: string; room_type: string; room_password?: string; auto_accept_requests?: boolean; } | null>(null);
   const [isPermanent, setIsPermanent] = useState(false);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
@@ -53,6 +50,7 @@ const Index = () => {
     initializeUser();
   }, []);
 
+  // --- LOGIC FUNCTIONS ---
   const generateRoomCode = () => {
     return Math.random().toString(36).substring(2, 8).toLowerCase();
   };
@@ -227,81 +225,89 @@ const Index = () => {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      {/* Top Bar */}
-      <header className="border-b border-border/30 bg-card/50 backdrop-blur-sm sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-              <Zap className="h-4 w-4 text-primary-foreground" />
+    <div className="min-h-screen relative overflow-hidden selection:bg-primary/30 selection:text-primary">
+      {/* Modern Ambient Background */}
+      <div className="fixed inset-0 -z-10 bg-background pointer-events-none">
+        <div className="absolute top-0 left-1/4 w-[500px] h-[500px] bg-primary/20 rounded-full blur-[120px] opacity-50 mix-blend-screen animate-pulse duration-10000" />
+        <div className="absolute bottom-0 right-1/4 w-[600px] h-[600px] bg-blue-500/10 rounded-full blur-[150px] opacity-50 mix-blend-screen" />
+      </div>
+
+      {/* Floating Glass Top Bar */}
+      <header className="sticky top-4 z-50 mx-4 md:mx-auto max-w-5xl rounded-2xl border border-white/10 dark:border-white/5 hover:border-white/20 bg-background/50 backdrop-blur-xl backdrop-saturate-150 shadow-lg shadow-black/5 transition-all duration-300">
+        <div className="px-4 md:px-6 h-14 flex items-center justify-between">
+          <div className="flex items-center gap-3 group cursor-pointer active:scale-95 transition-transform duration-200">
+            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-inner group-hover:shadow-primary/30 transition-all duration-300">
+              <Zap className="h-4 w-4 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300" />
             </div>
-            <span className="font-bold text-lg text-foreground">ShareHub4U</span>
+            <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70 group-hover:from-primary group-hover:to-blue-500 transition-all duration-300">
+              ShareHub
+            </span>
           </div>
           
           {currentUser ? (
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-2 px-3 py-1.5 bg-primary/10 rounded-full">
+            <div className="flex items-center gap-4">
+              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-full shadow-sm">
                 <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                   <User className="h-3 w-3 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-primary">{currentUser.username}</span>
               </div>
-              <Button onClick={logoutUser} variant="ghost" size="sm" className="text-muted-foreground h-8">
+              <Button onClick={logoutUser} variant="ghost" size="sm" className="hover:bg-destructive/10 hover:text-destructive active:scale-95 transition-all duration-200 rounded-full px-4">
                 Logout
               </Button>
             </div>
           ) : (
             <Dialog open={showAuthModal} onOpenChange={setShowAuthModal}>
               <DialogTrigger asChild>
-                <Button variant="outline" size="sm" className="h-8 gap-1.5">
-                  <LogIn className="h-3.5 w-3.5" />
-                  Sign in
+                <Button className="rounded-full shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background" size="sm">
+                  <LogIn className="h-4 w-4 mr-2" />
+                  Sign In
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[400px]">
-                <DialogHeader>
-                  <DialogTitle>Welcome back</DialogTitle>
+              <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl p-6">
+                <DialogHeader className="mb-4">
+                  <DialogTitle className="text-2xl font-bold tracking-tight">Welcome back</DialogTitle>
                   <DialogDescription>Sign in to manage rooms and access features.</DialogDescription>
                 </DialogHeader>
                 <Tabs value={authTab} onValueChange={setAuthTab}>
-                  <TabsList className="grid w-full grid-cols-2">
-                    <TabsTrigger value="login">Sign in</TabsTrigger>
-                    <TabsTrigger value="register">Register</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 h-12 rounded-xl bg-muted/50 border border-white/5 p-1 mb-4">
+                    <TabsTrigger value="login" className="rounded-lg font-medium data-[state=active]:shadow-sm transition-all duration-300">Sign in</TabsTrigger>
+                    <TabsTrigger value="register" className="rounded-lg font-medium data-[state=active]:shadow-sm transition-all duration-300">Register</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="login" className="space-y-3 pt-2">
-                    <div>
-                      <Label htmlFor="loginUsername" className="text-xs">Username</Label>
-                      <Input id="loginUsername" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Enter username" className="mt-1 h-9" />
+                  <TabsContent value="login" className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="loginUsername" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Username</Label>
+                      <Input id="loginUsername" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Enter username" className="h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                     </div>
-                    <div>
-                      <Label htmlFor="loginPassword" className="text-xs">Password</Label>
-                      <div className="relative mt-1">
-                        <Input id="loginPassword" type={showLoginPassword ? "text" : "password"} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Enter password" className="pr-10 h-9" />
-                        <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent" onClick={() => setShowLoginPassword(!showLoginPassword)}>
-                          {showLoginPassword ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <div className="space-y-2">
+                      <Label htmlFor="loginPassword" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</Label>
+                      <div className="relative group">
+                        <Input id="loginPassword" type={showLoginPassword ? "text" : "password"} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Enter password" className="pr-10 h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                        <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowLoginPassword(!showLoginPassword)}>
+                          {showLoginPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
                         </Button>
                       </div>
                     </div>
-                    <Button onClick={loginUser} disabled={isAuthenticating} className="w-full h-9">
-                      {isAuthenticating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Sign in"}
+                    <Button onClick={loginUser} disabled={isAuthenticating} className="w-full h-12 rounded-xl text-base font-semibold shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 mt-2">
+                      {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign in"}
                     </Button>
                   </TabsContent>
-                  <TabsContent value="register" className="space-y-3 pt-2">
-                    <div>
-                      <Label htmlFor="registerUsername" className="text-xs">Username</Label>
-                      <Input id="registerUsername" value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)} placeholder="Choose a username" className="mt-1 h-9" />
+                  <TabsContent value="register" className="space-y-4 pt-2">
+                    <div className="space-y-2">
+                      <Label htmlFor="registerUsername" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Username</Label>
+                      <Input id="registerUsername" value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)} placeholder="Choose a username" className="h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                     </div>
-                    <div>
-                      <Label htmlFor="registerPassword" className="text-xs">Password</Label>
-                      <div className="relative mt-1">
-                        <Input id="registerPassword" type={showRegisterPassword ? "text" : "password"} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="Min 6 characters" className="pr-10 h-9" />
-                        <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent" onClick={() => setShowRegisterPassword(!showRegisterPassword)}>
-                          {showRegisterPassword ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
+                    <div className="space-y-2">
+                      <Label htmlFor="registerPassword" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</Label>
+                      <div className="relative group">
+                        <Input id="registerPassword" type={showRegisterPassword ? "text" : "password"} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="Min 6 characters" className="pr-10 h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                        <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowRegisterPassword(!showRegisterPassword)}>
+                          {showRegisterPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
                         </Button>
                       </div>
                     </div>
-                    <Button onClick={registerUser} disabled={isAuthenticating} className="w-full h-9">
-                      {isAuthenticating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Create account"}
+                    <Button onClick={registerUser} disabled={isAuthenticating} className="w-full h-12 rounded-xl text-base font-semibold shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 mt-2">
+                      {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create account"}
                     </Button>
                   </TabsContent>
                 </Tabs>
@@ -311,219 +317,256 @@ const Index = () => {
         </div>
       </header>
 
-      {/* Hero */}
-      <section className="py-16 md:py-24 px-4">
-        <div className="max-w-3xl mx-auto text-center">
-          <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-primary/10 text-primary text-xs font-medium mb-6">
-            <Sparkles className="h-3 w-3" />
-            Fast, secure, temporary rooms
+      <main className="max-w-5xl mx-auto px-4 pt-16 pb-24 space-y-24">
+        
+        {/* Hero Section */}
+        <section className="text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold uppercase tracking-wider backdrop-blur-md shadow-sm hover:shadow-md hover:bg-primary/10 transition-all duration-300 cursor-default">
+            <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+            Instant • Secure • Ephemeral
           </div>
-          <h1 className="text-4xl md:text-6xl font-bold text-foreground tracking-tight leading-[1.1] mb-4">
-            Share files and notes
-            <br />
-            <span className="text-primary">instantly</span>
+          
+          <h1 className="text-5xl md:text-7xl font-extrabold text-foreground tracking-tighter leading-[1.05]">
+            Share at the <br className="hidden md:block" />
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-purple-600 drop-shadow-sm">
+              speed of thought.
+            </span>
           </h1>
-          <p className="text-lg text-muted-foreground max-w-xl mx-auto mb-10">
-            Create a room, share the code, collaborate. No signup required. Rooms auto-expire for privacy.
+          
+          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
+            Create a frictionless room, drop your files or notes, and collaborate instantly. No signup required. Rooms auto-vanish to protect your privacy.
           </p>
 
-          {/* Quick Join */}
-          <div className="max-w-md mx-auto">
-            <div className="flex gap-2">
-              <Input
-                placeholder="Enter room code..."
-                value={joinCode}
-                onChange={(e) => setJoinCode(e.target.value)}
-                onKeyPress={(e) => e.key === "Enter" && joinRoom()}
-                className="h-12 text-base bg-card border-border/50"
-              />
-              <Button onClick={joinRoom} disabled={isJoining} size="lg" className="h-12 px-6 gap-2">
-                {isJoining ? <Loader2 className="h-4 w-4 animate-spin" /> : (
-                  <>
-                    Join
-                    <ArrowRight className="h-4 w-4" />
-                  </>
-                )}
-              </Button>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features Strip */}
-      <section className="border-y border-border/30 bg-muted/20 py-8">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="grid grid-cols-3 gap-6 text-center">
-            <div className="flex flex-col items-center gap-2">
-              <Globe className="h-5 w-5 text-primary" />
-              <span className="text-xs md:text-sm font-medium text-foreground">Public Rooms</span>
-              <span className="text-xs text-muted-foreground hidden md:block">Anyone can join instantly</span>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <Shield className="h-5 w-5 text-primary" />
-              <span className="text-xs md:text-sm font-medium text-foreground">Locked Rooms</span>
-              <span className="text-xs text-muted-foreground hidden md:block">Host approval required</span>
-            </div>
-            <div className="flex flex-col items-center gap-2">
-              <Key className="h-5 w-5 text-primary" />
-              <span className="text-xs md:text-sm font-medium text-foreground">Private Rooms</span>
-              <span className="text-xs text-muted-foreground hidden md:block">Password protected access</span>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Create Room Section */}
-      <section className="py-12 md:py-16 px-4">
-        <div className="max-w-xl mx-auto">
-          <Card className="p-6 md:p-8 border-border/50 shadow-sm">
-            <div className="flex items-center gap-3 mb-6">
-              <div className="w-10 h-10 rounded-xl bg-primary/10 flex items-center justify-center">
-                <Plus className="h-5 w-5 text-primary" />
-              </div>
-              <div>
-                <h2 className="text-xl font-semibold text-foreground">Create a Room</h2>
-                <p className="text-sm text-muted-foreground">Set up a new collaboration space</p>
-              </div>
-            </div>
-            
-            <div className="space-y-4">
-              {/* Room Type Selection */}
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { value: "public", icon: Globe, label: "Public" },
-                  { value: "locked", icon: Lock, label: "Locked" },
-                  { value: "private_key", icon: Key, label: "Private" },
-                ].map(({ value, icon: Icon, label }) => (
-                  <button
-                    key={value}
-                    onClick={() => setRoomType(value)}
-                    className={`flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 transition-all duration-200 ${
-                      roomType === value
-                        ? "border-primary bg-primary/5 text-primary"
-                        : "border-border/50 hover:border-border text-muted-foreground hover:text-foreground"
-                    }`}
-                  >
-                    <Icon className="h-5 w-5" />
-                    <span className="text-xs font-medium">{label}</span>
-                  </button>
-                ))}
-              </div>
-
-              {/* Custom Slug */}
-              <div>
-                <Label htmlFor="customSlug" className="text-xs text-muted-foreground">Custom slug (optional)</Label>
+          {/* MASSIVE Quick Join Floating Pill */}
+          <div className="max-w-2xl mx-auto relative group mt-12">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary via-blue-500 to-purple-600 rounded-full blur-md opacity-30 group-hover:opacity-60 transition duration-700"></div>
+            <div className="relative flex gap-3 p-2.5 bg-background/80 backdrop-blur-2xl rounded-full border border-white/20 shadow-2xl focus-within:ring-4 focus-within:ring-primary/30 transition-all duration-300">
+              <div className="flex-1 relative flex items-center">
+                <Hash className="absolute left-6 h-7 w-7 text-muted-foreground/50" />
                 <Input
-                  id="customSlug"
-                  placeholder="my-room"
-                  value={customSlug}
-                  onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                  className="mt-1 h-9"
+                  placeholder="ENTER ROOM CODE"
+                  value={joinCode}
+                  onChange={(e) => setJoinCode(e.target.value)}
+                  onKeyPress={(e) => e.key === "Enter" && joinRoom()}
+                  className="h-16 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 pl-16 pr-6 text-2xl font-black tracking-widest w-full placeholder:text-muted-foreground/40 placeholder:font-bold placeholder:tracking-wider uppercase shadow-none"
                 />
               </div>
-
-              {/* Duration */}
-              <div>
-                <Label htmlFor="roomTiming" className="text-xs text-muted-foreground">Duration</Label>
-                <Select value={roomTiming} onValueChange={setRoomTiming}>
-                  <SelectTrigger className="mt-1 h-9">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="1h">1 Hour</SelectItem>
-                    <SelectItem value="12h">12 Hours</SelectItem>
-                    <SelectItem value="24h">1 Day</SelectItem>
-                    <SelectItem value="7d">7 Days</SelectItem>
-                    <SelectItem value="15d">15 Days</SelectItem>
-                    <SelectItem value="30d">30 Days</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              {/* Locked Room Credentials */}
-              {roomType === "locked" && !currentUser && (
-                <div className="space-y-3 p-3 rounded-xl bg-muted/30 border border-border/30">
-                  <p className="text-xs text-muted-foreground">Host credentials for approvals</p>
-                  <div>
-                    <Label htmlFor="hostUsername" className="text-xs">Username</Label>
-                    <Input id="hostUsername" value={hostUsername} onChange={(e) => setHostUsername(e.target.value)} placeholder="Username" className="mt-1 h-9" />
-                  </div>
-                  <div>
-                    <Label htmlFor="hostPasscode" className="text-xs">Passphrase</Label>
-                    <div className="relative mt-1">
-                      <Input id="hostPasscode" type={showHostPasscode ? "text" : "password"} value={hostPasscode} onChange={(e) => setHostPasscode(e.target.value)} placeholder="Passphrase" className="pr-10 h-9" />
-                      <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent" onClick={() => setShowHostPasscode(!showHostPasscode)}>
-                        {showHostPasscode ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
-                      </Button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Private Key Password */}
-              {roomType === "private_key" && (
-                <div>
-                  <Label htmlFor="roomPassword" className="text-xs text-muted-foreground">Room password</Label>
-                  <div className="relative mt-1">
-                    <Input id="roomPassword" type={showRoomPassword ? "text" : "password"} value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} placeholder="Set a password" className="pr-10 h-9" />
-                    <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent" onClick={() => setShowRoomPassword(!showRoomPassword)}>
-                      {showRoomPassword ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              {/* Pro Code */}
-              <div className="pt-2 border-t border-border/30">
-                <div className="flex items-center gap-1.5 mb-1">
-                  <Ticket className="h-3 w-3 text-primary" />
-                  <Label htmlFor="proCode" className="text-xs text-muted-foreground">Pro code (optional)</Label>
-                </div>
-                <Input id="proCode" value={proCode} onChange={(e) => setProCode(e.target.value)} placeholder="Enter for permanent room" className="h-9" />
-              </div>
-
-              <Button onClick={createRoom} disabled={isCreating} className="w-full h-11 gap-2 font-medium" size="lg">
-                {isCreating ? <Loader2 className="h-4 w-4 animate-spin" /> : (
+              <Button onClick={joinRoom} disabled={isJoining} className="h-16 px-10 rounded-full shadow-lg hover:shadow-primary/50 hover:shadow-xl active:scale-[0.98] transition-all duration-300 shrink-0 text-lg font-bold group/btn">
+                {isJoining ? <Loader2 className="h-6 w-6 animate-spin" /> : (
                   <>
-                    Create Room
-                    <ArrowRight className="h-4 w-4" />
+                    Join Room <ArrowRight className="h-6 w-6 ml-3 group-hover/btn:translate-x-2 transition-transform" />
                   </>
                 )}
               </Button>
             </div>
-          </Card>
-        </div>
-      </section>
+          </div>
+        </section>
 
-      {/* Footer */}
-      <footer className="border-t border-border/30 py-6 text-center">
-        <p className="text-xs text-muted-foreground">ShareHub4U — Instant, secure file & note sharing</p>
+        {/* Feature Pills */}
+        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-150">
+          {[
+            { icon: Globe, title: "Public", desc: "Open to anyone instantly", color: "text-blue-500", bg: "bg-blue-500/10", border: "group-hover:border-blue-500/30" },
+            { icon: Shield, title: "Locked", desc: "Host approval required", color: "text-amber-500", bg: "bg-amber-500/10", border: "group-hover:border-amber-500/30" },
+            { icon: Key, title: "Private", desc: "Password protected access", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "group-hover:border-emerald-500/30" }
+          ].map((feat, i) => (
+            <div key={i} className={`group flex flex-col items-center text-center p-6 rounded-3xl bg-background/30 border border-white/5 backdrop-blur-md hover:bg-background/50 hover:-translate-y-1 hover:shadow-xl ${feat.border} transition-all duration-300 cursor-default`}>
+              <div className={`w-14 h-14 rounded-2xl ${feat.bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
+                <feat.icon className={`h-7 w-7 ${feat.color}`} />
+              </div>
+              <h3 className="text-lg font-bold text-foreground mb-1.5">{feat.title}</h3>
+              <p className="text-sm font-medium text-muted-foreground">{feat.desc}</p>
+            </div>
+          ))}
+        </section>
+
+        {/* Glass Create Room Card */}
+        <section className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300">
+          <div className="relative group/card">
+            {/* Soft glow behind the card */}
+            <div className="absolute -inset-1 bg-gradient-to-b from-primary/20 to-transparent rounded-[2.5rem] blur-xl opacity-50 group-hover/card:opacity-75 transition-opacity duration-700"></div>
+            
+            <Card className="relative p-6 md:p-10 rounded-[2rem] border-white/10 hover:border-white/20 bg-background/50 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl overflow-hidden transition-all duration-500">
+              <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl group-hover/card:bg-primary/30 transition-colors duration-700"></div>
+
+              <div className="relative z-10">
+                <div className="flex items-center gap-4 mb-8">
+                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner group-hover/card:shadow-primary/20 transition-all duration-500">
+                    <Plus className="h-7 w-7 text-primary" />
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Launch Space</h2>
+                    <p className="text-sm text-muted-foreground font-medium mt-1">Configure your new environment</p>
+                  </div>
+                </div>
+                
+                <div className="space-y-8">
+                  
+                  {/* MASSIVE Highlighted Custom Slug Input */}
+                  <div className="space-y-3 pb-8 border-b border-border/30">
+                    <Label htmlFor="customSlug" className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2 ml-1">
+                      <Sparkles className="h-4 w-4 text-primary" /> Name Your Space (Optional)
+                    </Label>
+                    <div className="relative group/slug">
+                      <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/40 to-blue-500/40 rounded-2xl blur opacity-0 group-focus-within/slug:opacity-100 transition duration-500"></div>
+                      <div className="relative flex items-center bg-background/80 backdrop-blur-xl border-2 border-border/50 hover:border-primary/50 focus-within:border-primary rounded-2xl transition-all duration-300 overflow-hidden shadow-inner">
+                        <div className="px-4 md:px-6 py-5 bg-muted/50 border-r border-border/50 text-muted-foreground font-mono text-sm md:text-lg font-semibold flex items-center justify-center">
+                          s4u/
+                        </div>
+                        <Input
+                          id="customSlug"
+                          placeholder="my-epic-room"
+                          value={customSlug}
+                          onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
+                          className="h-16 md:h-20 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4 md:px-6 text-2xl md:text-3xl font-black tracking-wider w-full placeholder:text-muted-foreground/30 font-mono shadow-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Settings Grid */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    {/* Privacy Level */}
+                    <div className="space-y-3">
+                      <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Privacy Level</Label>
+                      <div className="grid grid-cols-3 gap-2">
+                        {[
+                          { value: "public", icon: Globe, label: "Public" },
+                          { value: "locked", icon: Lock, label: "Locked" },
+                          { value: "private_key", icon: Key, label: "Private" },
+                        ].map(({ value, icon: Icon, label }) => (
+                          <button
+                            key={value}
+                            onClick={() => setRoomType(value)}
+                            className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-300 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
+                              roomType === value
+                                ? "border-primary bg-primary/10 text-primary shadow-md shadow-primary/20 ring-1 ring-primary"
+                                : "border-border/50 bg-background/30 hover:bg-background/60 hover:border-border text-muted-foreground hover:text-foreground"
+                            }`}
+                          >
+                            <Icon className={`h-5 w-5 ${roomType === value ? "scale-110" : ""} transition-transform duration-300`} />
+                            <span className="text-xs font-bold tracking-wide">{label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Duration */}
+                    <div className="space-y-3">
+                      <Label htmlFor="roomTiming" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Lifespan</Label>
+                      <Select value={roomTiming} onValueChange={setRoomTiming}>
+                        <SelectTrigger className="h-[76px] rounded-2xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 text-lg font-semibold px-6">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-white/10 bg-background/90 backdrop-blur-2xl">
+                          <SelectItem value="1h" className="font-medium cursor-pointer py-3">1 Hour</SelectItem>
+                          <SelectItem value="12h" className="font-medium cursor-pointer py-3">12 Hours</SelectItem>
+                          <SelectItem value="24h" className="font-medium cursor-pointer py-3">24 Hours</SelectItem>
+                          <SelectItem value="7d" className="font-medium cursor-pointer py-3">7 Days</SelectItem>
+                          <SelectItem value="15d" className="font-medium cursor-pointer py-3">15 Days</SelectItem>
+                          <SelectItem value="30d" className="font-medium cursor-pointer py-3">30 Days</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  {/* Locked Credentials */}
+                  {roomType === "locked" && !currentUser && (
+                    <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-white/5 animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
+                      <p className="text-xs font-medium text-muted-foreground flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Temporary host credentials required for approvals</p>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label htmlFor="hostUsername" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Host Name</Label>
+                          <Input id="hostUsername" value={hostUsername} onChange={(e) => setHostUsername(e.target.value)} placeholder="Username" className="h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label htmlFor="hostPasscode" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Passphrase</Label>
+                          <div className="relative group">
+                            <Input id="hostPasscode" type={showHostPasscode ? "text" : "password"} value={hostPasscode} onChange={(e) => setHostPasscode(e.target.value)} placeholder="Passphrase" className="pr-10 h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                            <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowHostPasscode(!showHostPasscode)}>
+                              {showHostPasscode ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Private Password */}
+                  {roomType === "private_key" && (
+                     <div className="space-y-2 animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
+                       <Label htmlFor="roomPassword" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Access Password</Label>
+                       <div className="relative group">
+                         <Input id="roomPassword" type={showRoomPassword ? "text" : "password"} value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} placeholder="Secure your room..." className="h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 pr-10" />
+                         <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowRoomPassword(!showRoomPassword)}>
+                           {showRoomPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
+                         </Button>
+                       </div>
+                     </div>
+                  )}
+
+                  {/* Pro Code */}
+                  <div className="pt-6 border-t border-white/5">
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-1.5 ml-1 mb-1.5">
+                        <Ticket className="h-4 w-4 text-primary" />
+                        <Label htmlFor="proCode" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pro Code (Optional)</Label>
+                      </div>
+                      <Input id="proCode" value={proCode} onChange={(e) => setProCode(e.target.value)} placeholder="Unlock permanent rooms..." className="h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                    </div>
+                  </div>
+
+                  {/* Primary Call to Action */}
+                  <Button onClick={createRoom} disabled={isCreating} className="w-full h-16 mt-8 rounded-2xl text-xl font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 group overflow-hidden relative" size="lg">
+                    {/* Subtle shine effect on hover */}
+                    <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite] transition-all"></div>
+                    
+                    {isCreating ? <Loader2 className="h-7 w-7 animate-spin relative z-10" /> : (
+                      <div className="flex items-center justify-center relative z-10">
+                        Initialize Room
+                        <ArrowRight className="h-6 w-6 ml-3 transition-transform duration-300 group-hover:translate-x-2" />
+                      </div>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
+        </section>
+      </main>
+
+      {/* Modern Footer */}
+      <footer className="mt-auto py-8 border-t border-white/5 bg-background/20 backdrop-blur-md relative z-10">
+        <div className="text-center">
+          <p className="text-sm font-semibold tracking-wide text-muted-foreground/60 flex items-center justify-center gap-2 hover:text-muted-foreground transition-colors duration-300 cursor-default">
+            Built with <Sparkles className="h-4 w-4 text-primary/70 animate-pulse" /> ShareHub4U
+          </p>
+        </div>
       </footer>
 
       {/* Join Password Dialog */}
       <Dialog open={showJoinPasswordDialog} onOpenChange={setShowJoinPasswordDialog}>
-        <DialogContent className="sm:max-w-[380px]">
-          <DialogHeader>
-            <DialogTitle>Enter Password</DialogTitle>
-            <DialogDescription>This room is password protected.</DialogDescription>
+        <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl p-6">
+          <DialogHeader className="mb-2">
+            <DialogTitle className="text-2xl font-bold tracking-tight">Enter Password</DialogTitle>
+            <DialogDescription>This room is private and requires a password to enter.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-3">
-            <div className="relative">
+          <div className="space-y-5 pt-2">
+            <div className="relative group">
               <Input
                 type={showJoinPassword ? "text" : "password"}
                 value={joinPassword}
                 onChange={(e) => setJoinPassword(e.target.value)}
                 placeholder="Room password"
-                className="pr-10 h-9"
+                className="pr-10 h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200"
                 onKeyPress={(e) => e.key === "Enter" && handleJoinPasswordSubmit()}
               />
-              <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent" onClick={() => setShowJoinPassword(!showJoinPassword)}>
-                {showJoinPassword ? <EyeOff className="h-3.5 w-3.5 text-muted-foreground" /> : <Eye className="h-3.5 w-3.5 text-muted-foreground" />}
+              <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowJoinPassword(!showJoinPassword)}>
+                {showJoinPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
               </Button>
             </div>
-            <DialogFooter className="gap-2">
-              <Button variant="outline" size="sm" onClick={() => { setShowJoinPasswordDialog(false); setJoinPassword(""); setPendingRoomData(null); }}>Cancel</Button>
-              <Button size="sm" onClick={handleJoinPasswordSubmit}>Join</Button>
+            <DialogFooter className="gap-3 sm:gap-0 mt-4">
+              <Button variant="outline" className="rounded-xl border-white/10 hover:border-white/20 hover:bg-muted/50 active:scale-95 transition-all duration-200 h-11 px-6 font-semibold" onClick={() => { setShowJoinPasswordDialog(false); setJoinPassword(""); setPendingRoomData(null); }}>Cancel</Button>
+              <Button className="rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 h-11 px-6 font-semibold" onClick={handleJoinPasswordSubmit}>Join Room</Button>
             </DialogFooter>
           </div>
         </DialogContent>

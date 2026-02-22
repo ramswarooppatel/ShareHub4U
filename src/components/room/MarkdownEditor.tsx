@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
@@ -28,37 +28,40 @@ interface MarkdownNote {
   created_by: string;
 }
 
-// Custom components for enhanced markdown rendering
+// Fixed custom components to prevent horizontal overflows
 const MarkdownComponents = {
   code({ node, inline, className, children, ...props }: any) {
     const match = /language-(\w+)/.exec(className || '');
     return !inline && match ? (
-      <SyntaxHighlighter
-        style={oneDark}
-        language={match[1]}
-        PreTag="div"
-        className="rounded-md text-sm"
-        {...props}
-      >
-        {String(children).replace(/\n$/, '')}
-      </SyntaxHighlighter>
+      <div className="relative w-full overflow-x-auto rounded-xl border border-border/50 bg-[#282c34] my-4 shadow-sm">
+        <SyntaxHighlighter
+          style={oneDark}
+          language={match[1]}
+          PreTag="div"
+          className="text-[13px] sm:text-sm !m-0 !bg-transparent"
+          customStyle={{ padding: '1rem', background: 'transparent' }}
+          {...props}
+        >
+          {String(children).replace(/\n$/, '')}
+        </SyntaxHighlighter>
+      </div>
     ) : (
-      <code className="bg-muted px-1.5 py-0.5 rounded text-sm font-mono" {...props}>
+      <code className="bg-muted/80 text-primary px-1.5 py-0.5 rounded-md text-[13px] font-mono break-words border border-border/50" {...props}>
         {children}
       </code>
     );
   },
   blockquote({ children }: any) {
     return (
-      <blockquote className="border-l-4 border-primary pl-4 italic text-muted-foreground my-4">
+      <blockquote className="border-l-4 border-primary/50 bg-muted/30 py-1.5 px-4 italic text-muted-foreground my-4 rounded-r-xl">
         {children}
       </blockquote>
     );
   },
   table({ children }: any) {
     return (
-      <div className="overflow-x-auto my-4">
-        <table className="min-w-full border-collapse border border-border">
+      <div className="w-full overflow-x-auto my-4 rounded-xl border border-border/50 shadow-sm">
+        <table className="w-full min-w-[400px] border-collapse text-sm">
           {children}
         </table>
       </div>
@@ -66,18 +69,21 @@ const MarkdownComponents = {
   },
   th({ children }: any) {
     return (
-      <th className="border border-border px-4 py-2 bg-muted font-semibold text-left">
+      <th className="border-b border-border/50 px-4 py-3 bg-muted/50 font-semibold text-left text-foreground">
         {children}
       </th>
     );
   },
   td({ children }: any) {
     return (
-      <td className="border border-border px-4 py-2">
+      <td className="border-b border-border/20 px-4 py-3 text-muted-foreground">
         {children}
       </td>
     );
   },
+  p({ children }: any) {
+    return <p className="mb-4 leading-relaxed break-words">{children}</p>;
+  }
 };
 
 export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
@@ -88,8 +94,10 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
   const [content, setContent] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [showNoteList, setShowNoteList] = useState(true);
   const [editorMode, setEditorMode] = useState<"edit" | "preview">("edit");
+  
+  // Ref to seamlessly scroll to editor on mobile when a note is tapped
+  const editorRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     loadNotes();
@@ -135,8 +143,24 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
           table: 'markdown_notes',
           filter: `room_id=eq.${roomId}`
         },
-        () => {
-          loadNotes();
+        (payload) => {
+          if (payload.eventType === 'INSERT' && payload.new) {
+            setNotes(prev => [payload.new as MarkdownNote, ...prev]);
+          } else if (payload.eventType === 'DELETE' && payload.old) {
+            setNotes(prev => prev.filter(n => n.id !== payload.old.id));
+            if (currentNote?.id === payload.old.id) {
+              setCurrentNote(null);
+              setTitle("");
+              setContent("");
+            }
+          } else if (payload.eventType === 'UPDATE' && payload.new) {
+            setNotes(prev => prev.map(n => n.id === payload.new.id ? payload.new as MarkdownNote : n));
+            if (currentNote?.id === payload.new.id) {
+              setCurrentNote(payload.new as MarkdownNote);
+              setTitle(payload.new.title || "");
+              setContent(payload.new.content || "");
+            }
+          }
         }
       )
       .subscribe();
@@ -165,7 +189,7 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
           .eq("id", currentNote.id);
 
         if (error) throw error;
-        toast({ title: "Note updated!" });
+        toast({ title: "Note updated successfully!" });
       } else {
         const { error } = await supabase
           .from("markdown_notes")
@@ -177,7 +201,7 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
           });
 
         if (error) throw error;
-        toast({ title: "Note created!" });
+        toast({ title: "New note created!" });
       }
 
       loadNotes();
@@ -197,12 +221,24 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
     setCurrentNote(null);
     setTitle("");
     setContent("");
+    setEditorMode("edit");
+    scrollToEditor();
   };
 
   const selectNote = (note: MarkdownNote) => {
     setCurrentNote(note);
     setTitle(note.title);
     setContent(note.content);
+    scrollToEditor();
+  };
+
+  // Smooth scroll helper for mobile devices
+  const scrollToEditor = () => {
+    if (window.innerWidth < 1024) {
+      setTimeout(() => {
+        editorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
   };
 
   const deleteNote = async (noteId: string) => {
@@ -214,7 +250,7 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
 
       if (error) throw error;
 
-      toast({ title: "Note deleted!" });
+      toast({ title: "Note deleted forever" });
       
       if (currentNote?.id === noteId) {
         setCurrentNote(null);
@@ -239,70 +275,75 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
     navigator.clipboard.writeText(link);
     toast({
       title: "Link copied!",
-      description: "Share this link to view the note.",
+      description: "Share this link to let others view this note.",
     });
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="flex flex-col items-center justify-center py-20 gap-4 text-muted-foreground animate-in fade-in duration-500">
+        <Loader2 className="h-8 w-8 animate-spin text-primary/70" />
+        <p className="text-sm font-semibold tracking-widest uppercase">Syncing Workspace...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-4">
-      {/* Mobile-first header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div className="flex items-center gap-2">
-          <FileText className="h-5 w-5 text-primary" />
-          <h3 className="text-lg font-semibold text-foreground">Shared Notes</h3>
-          <span className="text-sm text-muted-foreground">({notes.length})</span>
+    <div className="flex flex-col h-full space-y-5 bg-background/20">
+      
+      {/* Header Controls */}
+      <div className="flex flex-row items-center justify-between gap-3 shrink-0 px-2 pt-2">
+        <div className="flex items-center gap-2.5">
+          <div className="p-1.5 rounded-lg bg-primary/10 text-primary shadow-inner">
+            <FileText className="h-4 w-4" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground tracking-tight">Live Notes</h3>
+          <span className="text-xs font-bold text-muted-foreground bg-muted/60 px-2 py-0.5 rounded-full border border-border/50">
+            {notes.length}
+          </span>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={() => setShowNoteList(!showNoteList)} 
-            size="sm" 
-            variant="outline"
-            className="sm:hidden"
-          >
-            {showNoteList ? "Hide" : "Show"} Notes
-          </Button>
-          <Button onClick={createNewNote} size="sm" variant="outline">
-            <Plus className="h-4 w-4 mr-2" />
-            New Note
-          </Button>
-        </div>
+        <Button onClick={createNewNote} size="sm" className="shadow-md hover:shadow-lg active:scale-95 transition-all rounded-xl font-semibold">
+          <Plus className="h-4 w-4 mr-1.5" />
+          New Note
+        </Button>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
-        {/* Notes List - Mobile responsive */}
-        <div className={`lg:col-span-1 ${showNoteList ? 'block' : 'hidden lg:block'}`}>
-          <Card className="p-4">
-            <h4 className="font-medium text-foreground mb-3">Your Notes</h4>
-            {notes.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No notes yet</p>
-            ) : (
-              <div className="space-y-2 max-h-96 overflow-y-auto">
-                {notes.map((note) => (
+      {/* Main Layout: Stacks on mobile, Grid on desktop */}
+      <div className="flex-1 flex flex-col lg:grid lg:grid-cols-4 gap-5 min-h-0 overflow-y-auto lg:overflow-hidden custom-scrollbar pb-safe">
+        
+        {/* Notes List (Top on mobile, Left on desktop) */}
+        <div className="lg:col-span-1 shrink-0 h-[220px] lg:h-full min-h-0 flex flex-col">
+          <Card className="flex flex-col h-full border-border/30 shadow-sm bg-card/60 backdrop-blur-md overflow-hidden rounded-[1.5rem] transition-shadow hover:shadow-md">
+            <div className="p-3.5 border-b border-border/30 shrink-0 bg-muted/20">
+              <h4 className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Directory</h4>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-2.5 space-y-1.5 custom-scrollbar">
+              {notes.length === 0 ? (
+                <div className="text-center py-10 px-4 text-muted-foreground animate-in fade-in">
+                  <FileText className="h-10 w-10 mx-auto mb-3 opacity-20" />
+                  <p className="text-sm font-medium">No notes yet.</p>
+                  <p className="text-xs opacity-70 mt-1">Create one to get started!</p>
+                </div>
+              ) : (
+                notes.map((note) => (
                   <div
                     key={note.id}
-                    className={`p-3 rounded-lg border cursor-pointer transition-colors ${
+                    className={`group p-3 rounded-xl border cursor-pointer transition-all duration-200 active:scale-[0.98] ${
                       currentNote?.id === note.id 
-                        ? 'border-primary bg-primary/5' 
-                        : 'border-border hover:border-primary/50'
+                        ? 'border-primary/40 bg-primary/10 shadow-sm' 
+                        : 'border-transparent hover:border-border/50 hover:bg-muted/40'
                     }`}
                     onClick={() => selectNote(note)}
                   >
-                    <div className="flex items-start justify-between">
+                    <div className="flex items-start justify-between gap-3">
                       <div className="flex-1 min-w-0">
-                        <p className="font-medium text-sm text-foreground truncate">
-                          {note.title || "Untitled"}
+                        <p className={`font-semibold text-sm truncate transition-colors ${currentNote?.id === note.id ? 'text-primary' : 'text-foreground group-hover:text-primary/80'}`}>
+                          {note.title || "Untitled Note"}
                         </p>
-                        <p className="text-xs text-muted-foreground">
-                          {new Date(note.updated_at).toLocaleDateString()}
+                        <p className="text-[11px] font-medium text-muted-foreground mt-1 tracking-wide">
+                          {new Date(note.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
                       {note.created_by === userId && (
@@ -311,105 +352,98 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
                             e.stopPropagation();
                             deleteNote(note.id);
                           }}
-                          size="sm"
+                          size="icon"
                           variant="ghost"
-                          className="h-6 w-6 p-0 text-destructive hover:text-destructive"
+                          className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-lg"
                         >
-                          <Trash2 className="h-3 w-3" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       )}
                     </div>
                   </div>
-                ))}
-              </div>
-            )}
+                ))
+              )}
+            </div>
           </Card>
         </div>
 
-        {/* Editor/Preview - Mobile responsive */}
-        <div className="lg:col-span-3">
-          <Card className="p-4">
-            <div className="space-y-4">
-              {/* Title input */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <Label htmlFor="title" className="text-sm font-medium">Note Title</Label>
-                  {currentNote && (
-                    <Button onClick={copyNoteLink} size="sm" variant="ghost">
-                      <Share2 className="h-4 w-4 mr-2" />
-                      Share
-                    </Button>
-                  )}
-                </div>
+        {/* Editor Area (Bottom on mobile, Right on desktop) */}
+        <div 
+          ref={editorRef} 
+          className="lg:col-span-3 flex-none lg:flex-1 h-[650px] lg:h-full min-h-0 flex flex-col scroll-mt-6"
+        >
+          <Card className="flex flex-col h-full border-border/30 shadow-md bg-card/80 backdrop-blur-xl overflow-hidden rounded-[1.5rem] transition-shadow hover:shadow-lg">
+            
+            {/* Title & Toolbar */}
+            <div className="shrink-0 p-4 border-b border-border/30 bg-muted/10 space-y-4">
+              <div className="flex items-center justify-between gap-3">
                 <Input
-                  id="title"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Enter note title..."
-                  className="text-lg font-medium"
+                  placeholder="Enter Note Title..."
+                  className="text-xl md:text-2xl font-bold h-12 border-transparent bg-transparent px-2 hover:bg-muted/30 focus-visible:bg-background focus-visible:border-primary/40 focus-visible:ring-2 transition-all rounded-xl shadow-none placeholder:text-muted-foreground/40"
                 />
+                {currentNote && (
+                  <Button onClick={copyNoteLink} size="sm" variant="outline" className="shrink-0 rounded-xl hover:bg-muted/50 transition-colors active:scale-95">
+                    <Share2 className="h-4 w-4 sm:mr-2 text-muted-foreground" />
+                    <span className="hidden sm:inline font-semibold">Share</span>
+                  </Button>
+                )}
               </div>
 
-              {/* Editor Tabs */}
-              <Tabs value={editorMode} onValueChange={(value) => {
-                const newMode = value as "edit" | "preview";
-                setEditorMode(newMode);
-              }} className="w-full">
-                <TabsList className="grid w-full grid-cols-2">
-                  <TabsTrigger value="edit" className="flex items-center gap-2">
-                    <Edit className="h-4 w-4" />
-                    <span className="hidden sm:inline">Edit</span>
+              <Tabs value={editorMode} onValueChange={(v) => setEditorMode(v as "edit" | "preview")} className="w-full">
+                <TabsList className="w-full sm:w-auto grid grid-cols-2 h-11 bg-muted/40 p-1 rounded-xl border border-border/30">
+                  <TabsTrigger value="edit" className="text-xs font-bold uppercase tracking-wider rounded-lg data-[state=active]:shadow-sm transition-all duration-300">
+                    <Edit className="h-3.5 w-3.5 mr-2" /> Edit
                   </TabsTrigger>
-                  <TabsTrigger value="preview" className="flex items-center gap-2">
-                    <Eye className="h-4 w-4" />
-                    <span className="hidden sm:inline">Preview</span>
+                  <TabsTrigger value="preview" className="text-xs font-bold uppercase tracking-wider rounded-lg data-[state=active]:shadow-sm transition-all duration-300">
+                    <Eye className="h-3.5 w-3.5 mr-2" /> Preview
                   </TabsTrigger>
                 </TabsList>
-                
-                <TabsContent value="edit" className="space-y-4 mt-4">
-                  <div className="relative">
-                    <Textarea
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="Write your markdown here...&#10;&#10;**Bold text**&#10;*Italic text*&#10;`inline code`&#10;&#10;```javascript&#10;console.log('code block');&#10;```&#10;&#10;- List item&#10;1. Numbered item&#10;&#10;> Blockquote&#10;&#10;| Table | Header |&#10;|-------|--------|&#10;| Cell  | Content|"
-                      className="min-h-[400px] font-mono text-sm leading-relaxed resize-none"
-                      style={{ fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace' }}
-                    />
-                    <div className="absolute bottom-2 right-2 text-xs text-muted-foreground bg-background px-2 py-1 rounded">
-                      Markdown supported
-                    </div>
-                  </div>
-                </TabsContent>
-                
-                <TabsContent value="preview" className="mt-4">
-                  <Card className="p-6 min-h-[400px] bg-card border-0">
-                    <div className="prose prose-sm sm:prose-base lg:prose-lg max-w-none dark:prose-invert 
-                      prose-headings:text-foreground prose-headings:font-semibold
-                      prose-p:text-foreground prose-p:leading-relaxed
-                      prose-strong:text-foreground prose-strong:font-semibold
-                      prose-em:text-foreground prose-em:italic
-                      prose-code:text-primary prose-code:bg-muted prose-code:px-1.5 prose-code:py-0.5 prose-code:rounded prose-code:text-sm prose-code:font-mono prose-code:before:content-none prose-code:after:content-none
-                      prose-pre:bg-transparent prose-pre:p-0 prose-pre:m-0
-                      prose-blockquote:border-l-primary prose-blockquote:text-muted-foreground prose-blockquote:font-normal prose-blockquote:not-italic
-                      prose-ul:text-foreground prose-ol:text-foreground prose-li:text-foreground
-                      prose-a:text-primary prose-a:no-underline hover:prose-a:underline
-                      prose-hr:border-border
-                      prose-table:text-foreground
-                      prose-th:bg-muted prose-th:text-foreground prose-th:font-semibold prose-th:border-border
-                      prose-td:border-border prose-td:text-foreground">
-                      <ReactMarkdown 
-                        remarkPlugins={[remarkGfm, remarkBreaks]}
-                        components={MarkdownComponents}
-                      >
-                        {content || "*Nothing to preview yet. Start writing in the Edit tab!*"}
-                      </ReactMarkdown>
-                    </div>
-                  </Card>
-                </TabsContent>
               </Tabs>
+            </div>
 
-              {/* Save button */}
-              <Button onClick={saveNote} disabled={saving} className="w-full" size="lg">
+            {/* Editor / Preview Content Area */}
+            <div className="flex-1 relative overflow-hidden bg-background/50 min-h-[400px]">
+              
+              {editorMode === "edit" ? (
+                <div className="absolute inset-0 p-4 sm:p-5">
+                  <Textarea
+                    value={content}
+                    onChange={(e) => setContent(e.target.value)}
+                    placeholder="Start typing your markdown here...&#10;&#10;**Bold** and *Italic*&#10;- Bullet lists&#10;1. Numbered lists&#10;```js&#10;Code blocks&#10;```"
+                    className="w-full h-full resize-none border-0 focus-visible:ring-0 p-0 text-[15px] leading-relaxed font-mono custom-scrollbar shadow-none bg-transparent"
+                    style={{ fontFamily: 'ui-monospace, SFMono-Regular, "SF Mono", Consolas, "Liberation Mono", Menlo, monospace' }}
+                  />
+                  <div className="absolute bottom-4 right-6 text-[10px] font-bold tracking-widest uppercase text-muted-foreground/40 bg-background/80 backdrop-blur-md px-3 py-1.5 rounded-lg border border-border/30 pointer-events-none shadow-sm">
+                    Markdown Supported
+                  </div>
+                </div>
+              ) : (
+                <div className="absolute inset-0 p-5 sm:p-8 overflow-y-auto overflow-x-hidden custom-scrollbar bg-background">
+                  <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none w-full break-words
+                      prose-headings:font-bold prose-headings:tracking-tight
+                      prose-a:text-primary prose-a:underline-offset-4 hover:prose-a:text-primary/80
+                      prose-hr:border-border/50
+                      prose-img:rounded-xl prose-img:border prose-img:border-border/50 prose-img:shadow-md">
+                    <ReactMarkdown 
+                      remarkPlugins={[remarkGfm, remarkBreaks]}
+                      components={MarkdownComponents}
+                    >
+                      {content || "*Nothing to preview yet. Switch to the Edit tab to start typing!*"}
+                    </ReactMarkdown>
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Save Button Footer */}
+            <div className="shrink-0 p-4 border-t border-border/30 bg-muted/10 flex justify-end">
+              <Button 
+                onClick={saveNote} 
+                disabled={saving || (!title.trim() && !content.trim())} 
+                className="w-full sm:w-auto shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 rounded-xl h-11 px-8 text-sm font-bold"
+              >
                 {saving ? (
                   <>
                     <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -418,11 +452,12 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
                 ) : (
                   <>
                     <Save className="mr-2 h-4 w-4" />
-                    {currentNote ? "Update Note" : "Save Note"}
+                    {currentNote ? "Save Changes" : "Create Note"}
                   </>
                 )}
               </Button>
             </div>
+            
           </Card>
         </div>
       </div>
