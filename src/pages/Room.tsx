@@ -46,6 +46,7 @@ const Room = () => {
   const [showPassword, setShowPassword] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [filesRefreshTrigger, setFilesRefreshTrigger] = useState(0);
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [activeTab, setActiveTab] = useState("files");
 
@@ -485,7 +486,7 @@ const Room = () => {
               >
                 {room.file_sharing_enabled && (
                   <Card className="p-1 border-border/30 shadow-sm bg-card/80 backdrop-blur-sm rounded-2xl transition-shadow duration-300 hover:shadow-md">
-                    <FileUpload roomId={room.id} userId={userId} disabled={room.only_host_can_upload && !isHost} />
+                    <FileUpload roomId={room.id} userId={userId} disabled={room.only_host_can_upload && !isHost} onFileUploaded={() => setFilesRefreshTrigger(prev => prev + 1)} />
                   </Card>
                 )}
                 {room.only_host_can_upload && !isHost && (
@@ -494,7 +495,7 @@ const Room = () => {
                   </div>
                 )}
                 <Card className="flex-1 p-0 sm:p-5 border-border/30 shadow-sm bg-card/80 backdrop-blur-sm rounded-2xl overflow-hidden flex flex-col min-h-[400px] transition-shadow duration-300 hover:shadow-md">
-                  <FileList roomId={room.id} userId={userId} isHost={isHost} />
+                  <FileList roomId={room.id} userId={userId} isHost={isHost} refreshTrigger={filesRefreshTrigger} />
                 </Card>
               </TabsContent>
 
