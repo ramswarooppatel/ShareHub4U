@@ -326,81 +326,81 @@ const Index = () => {
       </div>
 
       {/* Floating Glass Top Bar */}
-      <header className="sticky top-4 z-50 mx-4 md:mx-auto max-w-5xl rounded-2xl border border-white/10 dark:border-white/5 hover:border-white/20 bg-background/50 backdrop-blur-xl backdrop-saturate-150 shadow-lg shadow-black/5 transition-all duration-300">
-        <div className="px-4 md:px-6 h-14 flex items-center justify-between">
-          <div className="flex items-center gap-3 group cursor-pointer active:scale-95 transition-transform duration-200">
-            <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-inner group-hover:shadow-primary/30 transition-all duration-300">
-              <Zap className="h-4 w-4 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300" />
+      <header className="sticky top-0 z-50 mx-2 sm:mx-4 md:mx-auto max-w-5xl rounded-2xl border border-white/10 dark:border-white/5 hover:border-white/20 bg-background/50 backdrop-blur-xl backdrop-saturate-150 shadow-lg shadow-black/5 transition-all duration-300">
+        <div className="px-3 sm:px-4 md:px-6 h-12 sm:h-14 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3 group cursor-pointer active:scale-95 transition-transform duration-200">
+            <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-xl bg-gradient-to-br from-primary to-blue-600 flex items-center justify-center shadow-inner group-hover:shadow-primary/30 transition-all duration-300">
+              <Zap className="h-3 w-3 sm:h-4 sm:w-4 text-white drop-shadow-md group-hover:scale-110 transition-transform duration-300" />
             </div>
-            <span className="font-extrabold text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70 group-hover:from-primary group-hover:to-blue-500 transition-all duration-300">
+            <span className="font-extrabold text-base sm:text-lg tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-foreground to-foreground/70 group-hover:from-primary group-hover:to-blue-500 transition-all duration-300">
               ShareHub
             </span>
           </div>
           
           {currentUser ? (
-            <div className="flex items-center gap-4">
-              <div className="hidden md:flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-full shadow-sm">
+            <div className="flex items-center gap-2 sm:gap-4">
+              <div className="hidden sm:flex items-center gap-2 px-3 py-1.5 bg-primary/5 border border-primary/10 rounded-full shadow-sm">
                 <div className="w-5 h-5 rounded-full bg-primary/20 flex items-center justify-center">
                   <User className="h-3 w-3 text-primary" />
                 </div>
                 <span className="text-sm font-medium text-primary">{currentUser.username}</span>
               </div>
-              <Button onClick={logoutUser} variant="ghost" size="sm" className="hover:bg-destructive/10 hover:text-destructive active:scale-95 transition-all duration-200 rounded-full px-4">
+              <Button onClick={logoutUser} variant="ghost" size="sm" className="hover:bg-destructive/10 hover:text-destructive active:scale-95 transition-all duration-200 rounded-full px-3 sm:px-4 text-xs sm:text-sm">
                 Logout
               </Button>
             </div>
           ) : (
             <Dialog open={showAuthModal} onOpenChange={setShowAuthModal}>
               <DialogTrigger asChild>
-                <Button data-shortcut="auth" className="rounded-full shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background" size="sm">
-                  <LogIn className="h-4 w-4 mr-2" />
+                <Button data-shortcut="auth" className="rounded-full shadow-md hover:shadow-lg hover:-translate-y-0.5 active:scale-95 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background text-xs sm:text-sm px-3 sm:px-4" size="sm">
+                  <LogIn className="h-3 w-3 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
                   Sign In
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl p-6">
-                <DialogHeader className="mb-4">
-                  <DialogTitle className="text-2xl font-bold tracking-tight">Welcome back</DialogTitle>
-                  <DialogDescription>Sign in to manage rooms and access features.</DialogDescription>
+              <DialogContent className="sm:max-w-[400px] mx-2 sm:mx-auto rounded-2xl sm:rounded-[2rem] border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="mb-3 sm:mb-4">
+                  <DialogTitle className="text-xl sm:text-2xl font-bold tracking-tight">Welcome back</DialogTitle>
+                  <DialogDescription className="text-sm sm:text-base">Sign in to manage rooms and access features.</DialogDescription>
                 </DialogHeader>
                 <Tabs value={authTab} onValueChange={setAuthTab}>
-                  <TabsList className="grid w-full grid-cols-2 h-12 rounded-xl bg-muted/50 border border-white/5 p-1 mb-4">
-                    <TabsTrigger value="login" className="rounded-lg font-medium data-[state=active]:shadow-sm transition-all duration-300">Sign in</TabsTrigger>
-                    <TabsTrigger value="register" className="rounded-lg font-medium data-[state=active]:shadow-sm transition-all duration-300">Register</TabsTrigger>
+                  <TabsList className="grid w-full grid-cols-2 h-10 sm:h-12 rounded-xl bg-muted/50 border border-white/5 p-1 mb-3 sm:mb-4">
+                    <TabsTrigger value="login" className="rounded-lg font-medium data-[state=active]:shadow-sm transition-all duration-300 text-xs sm:text-sm">Sign in</TabsTrigger>
+                    <TabsTrigger value="register" className="rounded-lg font-medium data-[state=active]:shadow-sm transition-all duration-300 text-xs sm:text-sm">Register</TabsTrigger>
                   </TabsList>
-                  <TabsContent value="login" className="space-y-4 pt-2">
+                  <TabsContent value="login" className="space-y-3 sm:space-y-4 pt-2">
                     <div className="space-y-2">
                       <Label htmlFor="loginUsername" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Username</Label>
-                      <Input id="loginUsername" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Enter username" className="h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                      <Input id="loginUsername" value={loginUsername} onChange={(e) => setLoginUsername(e.target.value)} placeholder="Enter username" className="h-10 sm:h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="loginPassword" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</Label>
                       <div className="relative group">
-                        <Input id="loginPassword" type={showLoginPassword ? "text" : "password"} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Enter password" className="pr-10 h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                        <Input id="loginPassword" type={showLoginPassword ? "text" : "password"} value={loginPassword} onChange={(e) => setLoginPassword(e.target.value)} placeholder="Enter password" className="pr-10 h-10 sm:h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                         <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowLoginPassword(!showLoginPassword)}>
                           {showLoginPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
                         </Button>
                       </div>
                     </div>
-                    <Button onClick={loginUser} disabled={isAuthenticating} className="w-full h-12 rounded-xl text-base font-semibold shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 mt-2">
-                      {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Sign in"}
+                    <Button onClick={loginUser} disabled={isAuthenticating} className="w-full h-10 sm:h-12 rounded-xl text-sm sm:text-base font-semibold shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 mt-2">
+                      {isAuthenticating ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : "Sign in"}
                     </Button>
                   </TabsContent>
-                  <TabsContent value="register" className="space-y-4 pt-2">
+                  <TabsContent value="register" className="space-y-3 sm:space-y-4 pt-2">
                     <div className="space-y-2">
                       <Label htmlFor="registerUsername" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Username</Label>
-                      <Input id="registerUsername" value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)} placeholder="Choose a username" className="h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                      <Input id="registerUsername" value={registerUsername} onChange={(e) => setRegisterUsername(e.target.value)} placeholder="Choose a username" className="h-10 sm:h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="registerPassword" className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Password</Label>
                       <div className="relative group">
-                        <Input id="registerPassword" type={showRegisterPassword ? "text" : "password"} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="Min 6 characters" className="pr-10 h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                        <Input id="registerPassword" type={showRegisterPassword ? "text" : "password"} value={registerPassword} onChange={(e) => setRegisterPassword(e.target.value)} placeholder="Min 6 characters" className="pr-10 h-10 sm:h-11 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                         <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowRegisterPassword(!showRegisterPassword)}>
                           {showRegisterPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
                         </Button>
                       </div>
                     </div>
-                    <Button onClick={registerUser} disabled={isAuthenticating} className="w-full h-12 rounded-xl text-base font-semibold shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 mt-2">
-                      {isAuthenticating ? <Loader2 className="h-5 w-5 animate-spin" /> : "Create account"}
+                    <Button onClick={registerUser} disabled={isAuthenticating} className="w-full h-10 sm:h-12 rounded-xl text-sm sm:text-base font-semibold shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 mt-2">
+                      {isAuthenticating ? <Loader2 className="h-4 w-4 sm:h-5 sm:w-5 animate-spin" /> : "Create account"}
                     </Button>
                   </TabsContent>
                 </Tabs>
@@ -410,45 +410,45 @@ const Index = () => {
         </div>
       </header>
 
-      <main className="max-w-5xl mx-auto px-4 pt-16 pb-24 space-y-24">
+      <main className="max-w-5xl mx-auto px-4 pt-8 sm:pt-16 pb-16 sm:pb-24 space-y-12 sm:space-y-24">
         
         {/* Hero Section */}
-        <section className="text-center space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold uppercase tracking-wider backdrop-blur-md shadow-sm hover:shadow-md hover:bg-primary/10 transition-all duration-300 cursor-default">
-            <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+        <section className="text-center space-y-6 sm:space-y-8 animate-in fade-in slide-in-from-bottom-8 duration-700 ease-out">
+          <div className="inline-flex items-center gap-2 px-3 py-1 sm:px-4 sm:py-1.5 rounded-full border border-primary/20 bg-primary/5 text-primary text-xs font-semibold uppercase tracking-wider backdrop-blur-md shadow-sm hover:shadow-md hover:bg-primary/10 transition-all duration-300 cursor-default">
+            <Sparkles className="h-3 w-3 sm:h-3.5 sm:w-3.5 animate-pulse" />
             Instant • Secure • Ephemeral
           </div>
           
-          <h1 className="text-5xl md:text-7xl font-extrabold text-foreground tracking-tighter leading-[1.05]">
-            Share at the <br className="hidden md:block" />
+          <h1 className="text-4xl sm:text-5xl md:text-7xl font-extrabold text-foreground tracking-tighter leading-[1.1] sm:leading-[1.05]">
+            Share at the <br className="hidden sm:block" />
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary via-blue-500 to-purple-600 drop-shadow-sm">
               speed of thought.
             </span>
           </h1>
           
-          <p className="text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed">
+          <p className="text-base sm:text-lg md:text-xl text-muted-foreground max-w-2xl mx-auto font-light leading-relaxed px-2 sm:px-0">
             Create a frictionless room, drop your files or notes, and collaborate instantly. No signup required. Rooms auto-vanish to protect your privacy.
           </p>
 
           {/* MASSIVE Quick Join Floating Pill */}
-          <div className="max-w-2xl mx-auto relative group mt-12">
-            <div className="absolute -inset-1 bg-gradient-to-r from-primary via-blue-500 to-purple-600 rounded-full blur-md opacity-30 group-hover:opacity-60 transition duration-700"></div>
-            <div className="relative flex gap-3 p-2.5 bg-background/80 backdrop-blur-2xl rounded-full border border-white/20 shadow-2xl focus-within:ring-4 focus-within:ring-primary/30 transition-all duration-300">
+          <div className="max-w-2xl mx-auto relative group mt-8 sm:mt-12">
+            <div className="absolute -inset-1 bg-gradient-to-r from-primary/40 to-blue-500/40 rounded-full blur opacity-0 sm:opacity-50 group-hover:opacity-60 transition duration-700"></div>
+            <div className="relative flex flex-col sm:flex-row gap-2 sm:gap-3 p-2 sm:p-2.5 bg-background/80 backdrop-blur-2xl rounded-2xl sm:rounded-full border border-white/20 shadow-2xl focus-within:ring-4 focus-within:ring-primary/30 transition-all duration-300">
               <div className="flex-1 relative flex items-center">
-                <Hash className="absolute left-6 h-7 w-7 text-muted-foreground/50" />
+                <Hash className="absolute left-3 sm:left-6 h-5 w-5 sm:h-7 sm:w-7 text-muted-foreground/50" />
                 <Input
                   ref={joinCodeInputRef}
                   placeholder="ENTER ROOM CODE"
                   value={joinCode}
                   onChange={(e) => setJoinCode(e.target.value)}
                   onKeyPress={(e) => e.key === "Enter" && joinRoom()}
-                  className="h-16 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 pl-16 pr-6 text-2xl font-black tracking-widest w-full placeholder:text-muted-foreground/40 placeholder:font-bold placeholder:tracking-wider uppercase shadow-none"
+                  className="h-12 sm:h-16 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 pl-10 sm:pl-16 pr-4 sm:pr-6 text-lg sm:text-2xl font-black tracking-widest w-full placeholder:text-muted-foreground/40 placeholder:font-bold placeholder:tracking-wider uppercase shadow-none"
                 />
               </div>
-              <Button onClick={joinRoom} disabled={isJoining} className="h-16 px-10 rounded-full shadow-lg hover:shadow-primary/50 hover:shadow-xl active:scale-[0.98] transition-all duration-300 shrink-0 text-lg font-bold group/btn">
-                {isJoining ? <Loader2 className="h-6 w-6 animate-spin" /> : (
+              <Button onClick={joinRoom} disabled={isJoining} className="h-12 sm:h-16 px-6 sm:px-10 rounded-2xl sm:rounded-full shadow-lg hover:shadow-primary/50 hover:shadow-xl active:scale-[0.98] transition-all duration-300 shrink-0 text-sm sm:text-lg font-bold group/btn">
+                {isJoining ? <Loader2 className="h-4 w-4 sm:h-6 sm:w-6 animate-spin" /> : (
                   <>
-                    Join Room <ArrowRight className="h-6 w-6 ml-3 group-hover/btn:translate-x-2 transition-transform" />
+                    Join Room <ArrowRight className="h-4 w-4 sm:h-6 sm:w-6 ml-2 sm:ml-3 group-hover/btn:translate-x-2 transition-transform" />
                   </>
                 )}
               </Button>
@@ -457,17 +457,17 @@ const Index = () => {
         </section>
 
         {/* Feature Pills */}
-        <section className="grid grid-cols-1 md:grid-cols-3 gap-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-150">
+        <section className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-10 duration-1000 delay-150">
           {[
             { icon: Globe, title: "Public", desc: "Open to anyone instantly", color: "text-blue-500", bg: "bg-blue-500/10", border: "group-hover:border-blue-500/30" },
             { icon: Shield, title: "Locked", desc: "Host approval required", color: "text-amber-500", bg: "bg-amber-500/10", border: "group-hover:border-amber-500/30" },
             { icon: Key, title: "Private", desc: "Password protected access", color: "text-emerald-500", bg: "bg-emerald-500/10", border: "group-hover:border-emerald-500/30" }
           ].map((feat, i) => (
-            <div key={i} className={`group flex flex-col items-center text-center p-6 rounded-3xl bg-background/30 border border-white/5 backdrop-blur-md hover:bg-background/50 hover:-translate-y-1 hover:shadow-xl ${feat.border} transition-all duration-300 cursor-default`}>
-              <div className={`w-14 h-14 rounded-2xl ${feat.bg} flex items-center justify-center mb-5 group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
-                <feat.icon className={`h-7 w-7 ${feat.color}`} />
+            <div key={i} className={`group flex flex-col items-center text-center p-4 sm:p-6 rounded-2xl sm:rounded-3xl bg-background/30 border border-white/5 backdrop-blur-md hover:bg-background/50 hover:-translate-y-1 hover:shadow-xl ${feat.border} transition-all duration-300 cursor-default`}>
+              <div className={`w-12 h-12 sm:w-14 sm:h-14 rounded-2xl ${feat.bg} flex items-center justify-center mb-3 sm:mb-5 group-hover:scale-110 transition-transform duration-300 shadow-inner`}>
+                <feat.icon className={`h-5 w-5 sm:h-7 sm:w-7 ${feat.color}`} />
               </div>
-              <h3 className="text-lg font-bold text-foreground mb-1.5">{feat.title}</h3>
+              <h3 className="text-base sm:text-lg font-bold text-foreground mb-1 sm:mb-1.5">{feat.title}</h3>
               <p className="text-sm font-medium text-muted-foreground">{feat.desc}</p>
             </div>
           ))}
@@ -477,33 +477,33 @@ const Index = () => {
         <section className="max-w-2xl mx-auto animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300">
           <div className="relative group/card">
             {/* Soft glow behind the card */}
-            <div className="absolute -inset-1 bg-gradient-to-b from-primary/20 to-transparent rounded-[2.5rem] blur-xl opacity-50 group-hover/card:opacity-75 transition-opacity duration-700"></div>
+            <div className="absolute -inset-1 bg-gradient-to-b from-primary/20 to-transparent rounded-2xl sm:rounded-[2.5rem] blur-xl opacity-50 group-hover/card:opacity-75 transition-opacity duration-700"></div>
             
-            <Card className="relative p-6 md:p-10 rounded-[2rem] border-white/10 hover:border-white/20 bg-background/50 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl overflow-hidden transition-all duration-500">
+            <Card className="relative p-4 sm:p-6 md:p-10 rounded-2xl sm:rounded-[2rem] border-white/10 hover:border-white/20 bg-background/50 backdrop-blur-2xl backdrop-saturate-150 shadow-2xl overflow-hidden transition-all duration-500">
               <div className="absolute -top-24 -right-24 w-48 h-48 bg-primary/20 rounded-full blur-3xl group-hover/card:bg-primary/30 transition-colors duration-700"></div>
 
               <div className="relative z-10">
-                <div className="flex items-center gap-4 mb-8">
-                  <div className="w-14 h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner group-hover/card:shadow-primary/20 transition-all duration-500">
-                    <Plus className="h-7 w-7 text-primary" />
+                <div className="flex items-center gap-3 sm:gap-4 mb-6 sm:mb-8">
+                  <div className="w-12 h-12 sm:w-14 sm:h-14 rounded-2xl bg-gradient-to-br from-primary/20 to-primary/5 flex items-center justify-center border border-primary/10 shadow-inner group-hover/card:shadow-primary/20 transition-all duration-500">
+                    <Plus className="h-5 w-5 sm:h-7 sm:w-7 text-primary" />
                   </div>
                   <div>
-                    <h2 className="text-3xl font-bold tracking-tight text-foreground">Launch Space</h2>
+                    <h2 className="text-2xl sm:text-3xl font-bold tracking-tight text-foreground">Launch Space</h2>
                     <p className="text-sm text-muted-foreground font-medium mt-1">Configure your new environment</p>
                   </div>
                 </div>
                 
-                <div className="space-y-8">
+                <div className="space-y-6 sm:space-y-8">
                   
                   {/* MASSIVE Highlighted Custom Slug Input */}
-                  <div className="space-y-3 pb-8 border-b border-border/30">
+                  <div className="space-y-3 pb-6 sm:pb-8 border-b border-border/30">
                     <Label htmlFor="customSlug" className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2 ml-1">
                       <Sparkles className="h-4 w-4 text-primary" /> Name Your Space (Optional)
                     </Label>
                     <div className="relative group/slug">
                       <div className="absolute -inset-0.5 bg-gradient-to-r from-primary/40 to-blue-500/40 rounded-2xl blur opacity-0 group-focus-within/slug:opacity-100 transition duration-500"></div>
-                      <div className="relative flex items-center bg-background/80 backdrop-blur-xl border-2 border-border/50 hover:border-primary/50 focus-within:border-primary rounded-2xl transition-all duration-300 overflow-hidden shadow-inner">
-                        <div className="px-4 md:px-6 py-5 bg-muted/50 border-r border-border/50 text-muted-foreground font-mono text-sm md:text-lg font-semibold flex items-center justify-center">
+                      <div className="relative flex flex-col sm:flex-row items-stretch bg-background/80 backdrop-blur-xl border-2 border-border/50 hover:border-primary/50 focus-within:border-primary rounded-2xl transition-all duration-300 overflow-hidden shadow-inner">
+                        <div className="px-3 sm:px-4 md:px-6 py-3 sm:py-5 bg-muted/50 border-b sm:border-b-0 sm:border-r border-border/50 text-muted-foreground font-mono text-sm md:text-lg font-semibold flex items-center justify-center">
                           s4u/
                         </div>
                         <Input
@@ -512,14 +512,14 @@ const Index = () => {
                           placeholder="my-epic-room"
                           value={customSlug}
                           onChange={(e) => setCustomSlug(e.target.value.toLowerCase().replace(/[^a-z0-9-]/g, ''))}
-                          className="h-16 md:h-20 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-4 md:px-6 text-2xl md:text-3xl font-black tracking-wider w-full placeholder:text-muted-foreground/30 font-mono shadow-none"
+                          className="h-12 sm:h-16 md:h-20 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 px-3 sm:px-4 md:px-6 text-lg sm:text-2xl md:text-3xl font-black tracking-wider w-full placeholder:text-muted-foreground/30 placeholder:font-bold placeholder:tracking-wider font-mono shadow-none"
                         />
                       </div>
                     </div>
                   </div>
 
                   {/* Settings Grid */}
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 sm:gap-8">
                     {/* Privacy Level */}
                     <div className="space-y-3">
                       <Label className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Privacy Level</Label>
@@ -533,7 +533,7 @@ const Index = () => {
                             key={value}
                             data-room-type={value}
                             onClick={() => setRoomType(value)}
-                            className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-300 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none ${
+                            className={`flex flex-col items-center gap-2 p-3 rounded-2xl border transition-all duration-300 active:scale-95 focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:outline-none touch-manipulation ${
                               roomType === value
                                 ? "border-primary bg-primary/10 text-primary shadow-md shadow-primary/20 ring-1 ring-primary"
                                 : "border-border/50 bg-background/30 hover:bg-background/60 hover:border-border text-muted-foreground hover:text-foreground"
@@ -550,7 +550,7 @@ const Index = () => {
                     <div className="space-y-3">
                       <Label htmlFor="roomTiming" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Lifespan</Label>
                       <Select value={roomTiming} onValueChange={setRoomTiming}>
-                        <SelectTrigger data-shortcut="room-timing" className="h-[76px] rounded-2xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 text-lg font-semibold px-6">
+                        <SelectTrigger data-shortcut="room-timing" className="h-14 sm:h-[76px] rounded-2xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 text-base sm:text-lg font-semibold px-4 sm:px-6">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-white/10 bg-background/90 backdrop-blur-2xl">
@@ -567,17 +567,17 @@ const Index = () => {
 
                   {/* Locked Credentials */}
                   {roomType === "locked" && !currentUser && (
-                    <div className="space-y-4 p-5 rounded-2xl bg-muted/20 border border-white/5 animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
+                    <div className="space-y-4 p-4 sm:p-5 rounded-2xl bg-muted/20 border border-white/5 animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
                       <p className="text-xs font-medium text-muted-foreground flex items-center gap-2"><Shield className="h-3.5 w-3.5" /> Temporary host credentials required for approvals</p>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
                           <Label htmlFor="hostUsername" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Host Name</Label>
-                          <Input id="hostUsername" value={hostUsername} onChange={(e) => setHostUsername(e.target.value)} placeholder="Username" className="h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                          <Input id="hostUsername" value={hostUsername} onChange={(e) => setHostUsername(e.target.value)} placeholder="Username" className="h-10 sm:h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                         </div>
                         <div className="space-y-2">
                           <Label htmlFor="hostPasscode" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Passphrase</Label>
                           <div className="relative group">
-                            <Input id="hostPasscode" type={showHostPasscode ? "text" : "password"} value={hostPasscode} onChange={(e) => setHostPasscode(e.target.value)} placeholder="Passphrase" className="pr-10 h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                            <Input id="hostPasscode" type={showHostPasscode ? "text" : "password"} value={hostPasscode} onChange={(e) => setHostPasscode(e.target.value)} placeholder="Passphrase" className="pr-10 h-10 sm:h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                             <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowHostPasscode(!showHostPasscode)}>
                               {showHostPasscode ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
                             </Button>
@@ -592,7 +592,7 @@ const Index = () => {
                      <div className="space-y-2 animate-in fade-in slide-in-from-top-4 duration-300 ease-out">
                        <Label htmlFor="roomPassword" className="text-xs font-bold text-muted-foreground uppercase tracking-wider ml-1">Access Password</Label>
                        <div className="relative group">
-                         <Input id="roomPassword" type={showRoomPassword ? "text" : "password"} value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} placeholder="Secure your room..." className="h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 pr-10" />
+                         <Input id="roomPassword" type={showRoomPassword ? "text" : "password"} value={roomPassword} onChange={(e) => setRoomPassword(e.target.value)} placeholder="Secure your room..." className="h-10 sm:h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200 pr-10" />
                          <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowRoomPassword(!showRoomPassword)}>
                            {showRoomPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
                          </Button>
@@ -601,25 +601,25 @@ const Index = () => {
                   )}
 
                   {/* Pro Code */}
-                  <div className="pt-6 border-t border-white/5">
+                  <div className="pt-4 sm:pt-6 border-t border-white/5">
                     <div className="space-y-2">
                       <div className="flex items-center gap-1.5 ml-1 mb-1.5">
                         <Ticket className="h-4 w-4 text-primary" />
                         <Label htmlFor="proCode" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Pro Code (Optional)</Label>
                       </div>
-                      <Input id="proCode" value={proCode} onChange={(e) => setProCode(e.target.value)} placeholder="Unlock permanent rooms..." className="h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
+                      <Input id="proCode" value={proCode} onChange={(e) => setProCode(e.target.value)} placeholder="Unlock permanent rooms..." className="h-10 sm:h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200" />
                     </div>
                   </div>
 
                   {/* Primary Call to Action */}
-                  <Button onClick={createRoom} disabled={isCreating} data-shortcut="create-room" className="w-full h-16 mt-8 rounded-2xl text-xl font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 group overflow-hidden relative" size="lg">
+                  <Button onClick={createRoom} disabled={isCreating} data-shortcut="create-room" className="w-full h-12 sm:h-16 mt-6 sm:mt-8 rounded-2xl text-lg sm:text-xl font-bold shadow-lg shadow-primary/25 hover:shadow-xl hover:shadow-primary/40 hover:-translate-y-0.5 active:scale-[0.98] focus-visible:ring-2 focus-visible:ring-primary/50 focus-visible:ring-offset-2 focus-visible:ring-offset-background transition-all duration-300 group overflow-hidden relative touch-manipulation" size="lg">
                     {/* Subtle shine effect on hover */}
                     <div className="absolute inset-0 -translate-x-full bg-gradient-to-r from-transparent via-white/20 to-transparent group-hover:animate-[shimmer_1.5s_infinite] transition-all"></div>
                     
-                    {isCreating ? <Loader2 className="h-7 w-7 animate-spin relative z-10" /> : (
+                    {isCreating ? <Loader2 className="h-5 w-5 sm:h-7 sm:w-7 animate-spin relative z-10" /> : (
                       <div className="flex items-center justify-center relative z-10">
                         Initialize Room
-                        <ArrowRight className="h-6 w-6 ml-3 transition-transform duration-300 group-hover:translate-x-2" />
+                        <ArrowRight className="h-4 w-4 sm:h-6 sm:w-6 ml-2 sm:ml-3 transition-transform duration-300 group-hover:translate-x-2" />
                       </div>
                     )}
                   </Button>
@@ -632,25 +632,25 @@ const Index = () => {
 
       {/* Keyboard Shortcuts Display */}
       <div className="border-t border-white/5 bg-background/20 backdrop-blur-md">
-        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-4">
-          <div className="flex flex-wrap items-center justify-center gap-4 text-xs text-muted-foreground">
-            <span className="font-medium text-foreground">Keyboard Shortcuts:</span>
-            {shortcuts.map((shortcut, index) => (
+        <div className="max-w-7xl mx-auto px-4 lg:px-6 py-3 sm:py-4">
+          <div className="flex flex-wrap items-center justify-center gap-2 sm:gap-4 text-xs text-muted-foreground">
+            <span className="font-medium text-foreground hidden sm:inline">Keyboard Shortcuts:</span>
+            {shortcuts.slice(0, 3).map((shortcut, index) => (
               <div key={index} className="flex items-center gap-1">
-                <kbd className="px-2 py-1 bg-muted/50 border border-border/50 rounded text-xs font-mono">
+                <kbd className="px-1.5 sm:px-2 py-0.5 sm:py-1 bg-muted/50 border border-border/50 rounded text-xs font-mono">
                   {shortcut.alt && 'Alt+'}
                   {shortcut.ctrl && 'Ctrl+'}
                   {shortcut.shift && 'Shift+'}
                   {shortcut.key.toUpperCase()}
                 </kbd>
-                <span className="text-muted-foreground/80">{shortcut.description}</span>
+                <span className="text-muted-foreground/80 hidden sm:inline">{shortcut.description}</span>
               </div>
             ))}
             <Button 
               variant="ghost" 
               size="sm" 
               onClick={() => setShowShortcutsModal(true)}
-              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50"
+              className="h-6 px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted/50 touch-manipulation"
             >
               View All
             </Button>
@@ -659,8 +659,8 @@ const Index = () => {
       </div>
 
       {/* Modern Footer */}
-      <footer className="mt-auto py-8 border-t border-white/5 bg-background/20 backdrop-blur-md relative z-10">
-        <div className="text-center">
+      <footer className="mt-auto py-6 sm:py-8 border-t border-white/5 bg-background/20 backdrop-blur-md relative z-10">
+        <div className="text-center px-4">
           <p className="text-sm font-semibold tracking-wide text-muted-foreground/60 flex items-center justify-center gap-2 hover:text-muted-foreground transition-colors duration-300 cursor-default">
             Built with <Sparkles className="h-4 w-4 text-primary/70 animate-pulse" /> ShareHub4U
           </p>
@@ -669,28 +669,28 @@ const Index = () => {
 
       {/* Join Password Dialog */}
       <Dialog open={showJoinPasswordDialog} onOpenChange={setShowJoinPasswordDialog}>
-        <DialogContent className="sm:max-w-[400px] rounded-[2rem] border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl p-6">
+        <DialogContent className="sm:max-w-[400px] mx-4 sm:mx-auto rounded-2xl sm:rounded-[2rem] border-white/10 bg-background/80 backdrop-blur-2xl shadow-2xl p-4 sm:p-6 max-h-[90vh] overflow-y-auto">
           <DialogHeader className="mb-2">
-            <DialogTitle className="text-2xl font-bold tracking-tight">Enter Password</DialogTitle>
-            <DialogDescription>This room is private and requires a password to enter.</DialogDescription>
+            <DialogTitle className="text-xl sm:text-2xl font-bold tracking-tight">Enter Password</DialogTitle>
+            <DialogDescription className="text-sm sm:text-base">This room is private and requires a password to enter.</DialogDescription>
           </DialogHeader>
-          <div className="space-y-5 pt-2">
+          <div className="space-y-4 sm:space-y-5 pt-2">
             <div className="relative group">
               <Input
                 type={showJoinPassword ? "text" : "password"}
                 value={joinPassword}
                 onChange={(e) => setJoinPassword(e.target.value)}
                 placeholder="Room password"
-                className="pr-10 h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200"
+                className="pr-10 h-10 sm:h-12 rounded-xl bg-background/50 border-white/10 hover:border-white/20 focus-visible:bg-background focus-visible:border-primary focus-visible:ring-2 focus-visible:ring-primary/30 transition-all duration-200"
                 onKeyPress={(e) => e.key === "Enter" && handleJoinPasswordSubmit()}
               />
-              <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform" onClick={() => setShowJoinPassword(!showJoinPassword)}>
+              <Button type="button" variant="ghost" size="sm" className="absolute right-0 top-0 h-full px-3 hover:bg-transparent rounded-r-xl active:scale-95 transition-transform touch-manipulation" onClick={() => setShowJoinPassword(!showJoinPassword)}>
                 {showJoinPassword ? <EyeOff className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" /> : <Eye className="h-4 w-4 text-muted-foreground group-hover:text-foreground transition-colors" />}
               </Button>
             </div>
-            <DialogFooter className="gap-3 sm:gap-0 mt-4">
-              <Button variant="outline" className="rounded-xl border-white/10 hover:border-white/20 hover:bg-muted/50 active:scale-95 transition-all duration-200 h-11 px-6 font-semibold" onClick={() => { setShowJoinPasswordDialog(false); setJoinPassword(""); setPendingRoomData(null); }}>Cancel</Button>
-              <Button className="rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 h-11 px-6 font-semibold" onClick={handleJoinPasswordSubmit}>Join Room</Button>
+            <DialogFooter className="gap-2 sm:gap-3 mt-4 flex-col sm:flex-row">
+              <Button variant="outline" className="rounded-xl border-white/10 hover:border-white/20 hover:bg-muted/50 active:scale-95 transition-all duration-200 h-10 sm:h-11 px-4 sm:px-6 font-semibold w-full sm:w-auto order-2 sm:order-1 touch-manipulation" onClick={() => { setShowJoinPasswordDialog(false); setJoinPassword(""); setPendingRoomData(null); }}>Cancel</Button>
+              <Button className="rounded-xl shadow-md hover:shadow-lg active:scale-95 transition-all duration-200 h-10 sm:h-11 px-4 sm:px-6 font-semibold w-full sm:w-auto order-1 sm:order-2 touch-manipulation" onClick={handleJoinPasswordSubmit}>Join Room</Button>
             </DialogFooter>
           </div>
         </DialogContent>
