@@ -70,6 +70,19 @@ export const RoomTimer = ({ expiresAt, isPermanent }: RoomTimerProps) => {
 
   const isExpired = timeLeft === "Expired";
 
+  let formattedLocale = "";
+  let formatted12 = "";
+  if (expiresAt) {
+    try {
+      const d = new Date(expiresAt);
+      formattedLocale = d.toLocaleString();
+      formatted12 = d.toLocaleString(undefined, { hour: 'numeric', minute: '2-digit', hour12: true });
+    } catch (e) {
+      formattedLocale = expiresAt;
+      formatted12 = expiresAt;
+    }
+  }
+
   return (
     <>
       <button onClick={() => setOpen(true)} className={`flex items-center gap-3 p-3 rounded-lg hover:shadow-lg transition-all ${isExpired ? 'bg-destructive/5 border-destructive/10' : 'bg-warning/5 border-warning/10'}`}>
@@ -102,7 +115,10 @@ export const RoomTimer = ({ expiresAt, isPermanent }: RoomTimerProps) => {
             )}
 
             {expiresAt && (
-              <p className="mt-4 text-sm text-muted-foreground">Expires at: {new Date(expiresAt).toLocaleString()}</p>
+              <>
+                <p className="mt-4 text-sm text-muted-foreground">Expires at: {formattedLocale}</p>
+                <p className="mt-1 text-sm text-muted-foreground">Time: {formatted12}</p>
+              </>
             )}
           </div>
 

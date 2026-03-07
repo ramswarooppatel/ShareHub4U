@@ -240,7 +240,7 @@ const Room = () => {
           </div>
 
           {/* Timer (shows remaining time) */}
-          <div className="hidden sm:flex items-center px-2">
+          <div className="flex items-center px-2">
             <RoomTimer expiresAt={room.expires_at} isPermanent={room.is_permanent} />
           </div>
 
