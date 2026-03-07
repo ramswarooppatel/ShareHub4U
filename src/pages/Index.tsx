@@ -62,14 +62,16 @@ const Index = () => {
 
   const addRecentRoom = (roomCode: string) => {
     if (!roomCode) return;
-    if (!settings.saveRoomHistory) return;
-    
-    setRecentRooms((prev) => {
-      // Add to front, remove duplicates, keep max 8
-      const dedup = [roomCode, ...prev.filter(r => r !== roomCode)].slice(0, 8);
+    // Always persist recent rooms to localStorage (no duplicates).
+    try {
+      const existing = loadRecentRooms();
+      const dedup = [roomCode, ...existing.filter(r => r !== roomCode)].slice(0, 20);
       saveRecentRooms(dedup);
-      return dedup;
-    });
+      // update UI state only if user has history enabled
+      if (settings.saveRoomHistory) setRecentRooms(dedup);
+    } catch (e) {
+      // best-effort
+    }
   };
 
   const removeRecentRoom = (roomCode: string) => {
@@ -251,7 +253,7 @@ const Index = () => {
           </div>
 
           <div className="flex items-center gap-2">
-            <Button size="icon" variant="ghost" onClick={() => setHistoryOpen(true)} className="h-10 w-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all relative" title="Recent Rooms">
+            <Button size="icon" variant="ghost" onClick={() => { try { setRecentRooms(loadRecentRooms()); } catch (e) {} setHistoryOpen(true); }} className="h-10 w-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all relative" title="Recent Rooms">
               <Clock className="h-5 w-5 text-muted-foreground hover:text-foreground" />
               {recentRooms.length > 0 && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-primary border-2 border-background rounded-full" />}
             </Button>
