@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Room from "./pages/Room";
 import Waiting from "./pages/Waiting";
+import Contributors from "./pages/contributors";
 import NotFound from "./pages/NotFound";
 import Admin from "./pages/Admin";
 
@@ -22,6 +23,7 @@ const App = () => (
           <Route path="/admin" element={<Admin />} />
           <Route path="/room/:code/waiting" element={<Waiting />} />
           <Route path="/room/:slug" element={<Room />} />
+          <Route path="/contributors" element={<Contributors />} />
           {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
           <Route path="*" element={<NotFound />} />
         </Routes>

@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Loader2, FileUp, X } from "lucide-react";
+import { Upload, Loader2, FileUp, X, ClipboardPaste } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface FileUploadProps {
@@ -89,6 +89,73 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
     }
   };
 
+  // Handle standard paste shortcut (Ctrl+V / Cmd+V)
+  const handlePaste = (e: ClipboardEvent | React.ClipboardEvent<HTMLDivElement>) => {
+    try {
+      const clipboardData = (e as any).clipboardData || (window as any).clipboardData;
+      if (!clipboardData) return;
+
+      if (clipboardData.files && clipboardData.files.length > 0) {
+        handleFileSelect(clipboardData.files);
+        return;
+      }
+
+      const items = clipboardData.items || [];
+      const files: File[] = [];
+      for (const item of items) {
+        if (item && item.kind === 'file' && item.type && item.type.startsWith('image')) {
+          const file = item.getAsFile();
+          if (file) files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        handleFileSelect(files);
+      }
+    } catch (err) {
+      // no-op
+    }
+  };
+
+  // Explicit Button to read from Clipboard
+  const handlePasteFromButton = async (e: React.MouseEvent) => {
+    e.stopPropagation(); // Prevent triggering the dropzone's file picker
+    try {
+      const clipboardItems = await navigator.clipboard.read();
+      const files: File[] = [];
+
+      for (const item of clipboardItems) {
+        // Look for image formats in the clipboard
+        const imageTypes = item.types.filter(type => type.startsWith('image/'));
+        for (const type of imageTypes) {
+          const blob = await item.getType(type);
+          const ext = type.split('/')[1] || 'png';
+          // Create a File object from the blob
+          const file = new File([blob], `pasted-image-${Date.now()}.${ext}`, { type });
+          files.push(file);
+        }
+      }
+
+      if (files.length > 0) {
+        handleFileSelect(files);
+        toast({ title: "Pasted from clipboard!" });
+      } else {
+        toast({
+          title: "Nothing to paste",
+          description: "No supported files (like images) found in your clipboard.",
+          variant: "destructive",
+        });
+      }
+    } catch (err) {
+      console.error("Clipboard read error:", err);
+      toast({
+        title: "Clipboard Error",
+        description: "Please allow clipboard permissions, or use Ctrl+V to paste.",
+        variant: "destructive",
+      });
+    }
+  };
+
   const removeFile = (index: number) => {
     setSelectedFiles(prev => prev.filter((_, i) => i !== index));
   };
@@ -100,14 +167,11 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
 
   const uploadFile = async () => {
     if (selectedFiles.length === 0) return;
-
     setUploading(true);
 
-    // Upload files sequentially to avoid overwhelming the server
     for (let i = 0; i < selectedFiles.length; i++) {
       const fileWithProgress = selectedFiles[i];
 
-      // Mark as uploading
       setSelectedFiles(prev => prev.map((f, idx) =>
         idx === i ? { ...f, uploading: true, progress: 0 } : f
       ));
@@ -117,24 +181,20 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
         const fileName = `${Math.random().toString(36).substring(2)}.${fileExt}`;
         const filePath = `${roomId}/${fileName}`;
 
-        // Upload to storage
         const { error: uploadError } = await supabase.storage
           .from("room-files")
           .upload(filePath, fileWithProgress.file);
 
         if (uploadError) throw uploadError;
 
-        // Update progress to 50%
         setSelectedFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, progress: 50 } : f
         ));
 
-        // Get public URL
         const { data: urlData } = supabase.storage
           .from("room-files")
           .getPublicUrl(filePath);
 
-        // Insert into database
         const { error: dbError } = await supabase.from("room_files").insert({
           room_id: roomId,
           uploaded_by: userId,
@@ -148,23 +208,19 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
 
         if (dbError) throw dbError;
 
-        // Call callback to refresh list instantly
         onFileUploaded?.();
 
-        // Mark as completed
         setSelectedFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, progress: 100, uploading: false } : f
         ));
 
       } catch (error: any) {
-        // Mark as error
         setSelectedFiles(prev => prev.map((f, idx) =>
           idx === i ? { ...f, uploading: false, error: error.message } : f
         ));
       }
     }
 
-    // Show success message for successfully uploaded files
     const successfulUploads = selectedFiles.filter(f => f.progress === 100);
     if (successfulUploads.length > 0) {
       toast({
@@ -173,7 +229,6 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
       });
     }
 
-    // Remove successfully uploaded files after a delay
     setTimeout(() => {
       setSelectedFiles(prev => prev.filter(f => f.progress !== 100));
     }, 2000);
@@ -190,10 +245,11 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
           onDragLeave={handleDrag}
           onDragOver={handleDrag}
           onDrop={handleDrop}
+          onPaste={handlePaste}
           onClick={() => !disabled && inputRef.current?.click()}
-          className={`relative border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all duration-200 ${
+          className={`relative flex flex-col items-center justify-center border-2 border-dashed rounded-[1.5rem] p-8 sm:p-10 text-center cursor-pointer transition-all duration-300 ${
             dragActive
-              ? "border-primary bg-primary/5 scale-[1.01]"
+              ? "border-primary bg-primary/5 scale-[1.02]"
               : "border-border/50 hover:border-primary/50 hover:bg-muted/30"
           } ${disabled ? "opacity-50 cursor-not-allowed" : ""}`}
         >
@@ -205,22 +261,35 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
             disabled={disabled || uploading}
             className="hidden"
           />
-          <FileUp className={`h-8 w-8 mx-auto mb-2 transition-colors ${
-            dragActive ? "text-primary" : "text-muted-foreground/50"
-          }`} />
-          <p className="text-sm font-medium text-foreground">
-            {dragActive ? "Drop files here" : "Click or drag files to upload"}
+          <div className={`p-4 rounded-full mb-4 transition-colors duration-300 ${dragActive ? "bg-primary/20 text-primary" : "bg-muted text-muted-foreground"}`}>
+            <FileUp className="h-8 w-8 sm:h-10 sm:w-10" />
+          </div>
+          <h3 className="text-lg font-bold text-foreground mb-1">
+            {dragActive ? "Drop files to upload" : "Click or drag files"}
+          </h3>
+          <p className="text-xs font-medium text-muted-foreground mb-6">
+            Max 50MB per file • Multiple files supported
           </p>
-          <p className="text-xs text-muted-foreground mt-1">Max 50MB per file • Multiple files supported</p>
+
+          {!disabled && !dragActive && (
+            <Button 
+              type="button"
+              variant="secondary" 
+              onClick={handlePasteFromButton}
+              className="rounded-full shadow-sm hover:shadow-md active:scale-95 transition-all text-xs font-bold px-5 h-10"
+            >
+              <ClipboardPaste className="h-4 w-4 mr-2" /> Paste from Clipboard
+            </Button>
+          )}
         </div>
       ) : (
         <div className="space-y-3">
           {/* File List */}
-          <div className="max-h-64 overflow-y-auto space-y-2 custom-scrollbar">
+          <div className="max-h-64 overflow-y-auto space-y-2 custom-scrollbar pr-1">
             {selectedFiles.map((fileWithProgress, index) => (
               <div
                 key={index}
-                className={`flex items-center gap-3 p-3 rounded-xl border transition-all duration-200 ${
+                className={`flex items-center gap-3 p-3 rounded-2xl border transition-all duration-200 ${
                   fileWithProgress.error
                     ? "border-destructive/50 bg-destructive/5"
                     : fileWithProgress.progress === 100
@@ -228,45 +297,45 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
                     : "border-border/50 bg-muted/20"
                 }`}
               >
-                <div className={`w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 ${
+                <div className={`w-12 h-12 rounded-xl flex items-center justify-center flex-shrink-0 ${
                   fileWithProgress.error
                     ? "bg-destructive/10"
                     : fileWithProgress.progress === 100
                     ? "bg-green-500/10"
-                    : "bg-primary/10"
+                    : "bg-primary/10 shadow-inner"
                 }`}>
                   {fileWithProgress.error ? (
                     <X className="h-5 w-5 text-destructive" />
                   ) : fileWithProgress.progress === 100 ? (
-                    <Upload className="h-5 w-5 text-green-600" />
+                    <Check className="h-5 w-5 text-green-600" />
                   ) : (
                     <FileUp className="h-5 w-5 text-primary" />
                   )}
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className={`text-sm font-medium truncate ${
+                  <p className={`text-sm font-bold truncate ${
                     fileWithProgress.error ? "text-destructive" : "text-foreground"
                   }`}>
                     {fileWithProgress.file.name}
                   </p>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-[11px] font-semibold text-muted-foreground mt-0.5">
                     {(fileWithProgress.file.size / 1024 / 1024).toFixed(2)} MB
                   </p>
                   {fileWithProgress.uploading && (
-                    <div className="mt-2">
-                      <Progress value={fileWithProgress.progress} className="h-1" />
+                    <div className="mt-2.5">
+                      <Progress value={fileWithProgress.progress} className="h-1.5" />
                     </div>
                   )}
                   {fileWithProgress.error && (
-                    <p className="text-xs text-destructive mt-1">{fileWithProgress.error}</p>
+                    <p className="text-xs font-semibold text-destructive mt-1.5">{fileWithProgress.error}</p>
                   )}
                 </div>
                 {!fileWithProgress.uploading && fileWithProgress.progress !== 100 && (
                   <Button
                     onClick={() => removeFile(index)}
-                    size="sm"
+                    size="icon"
                     variant="ghost"
-                    className="h-8 w-8 p-0 text-muted-foreground hover:text-destructive"
+                    className="h-9 w-9 rounded-full text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-colors"
                   >
                     <X className="h-4 w-4" />
                   </Button>
@@ -276,24 +345,37 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
           </div>
 
           {/* Action Buttons */}
-          <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center justify-between gap-3 pt-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
-                {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''} selected
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground hidden sm:inline-block">
+                {selectedFiles.length} file{selectedFiles.length !== 1 ? 's' : ''}
               </span>
               {selectedFiles.length > 1 && (
                 <Button
                   onClick={clearAllFiles}
                   size="sm"
                   variant="ghost"
-                  className="h-7 px-2 text-xs text-muted-foreground hover:text-destructive"
+                  className="h-8 px-3 rounded-full text-xs font-bold text-muted-foreground hover:text-destructive hover:bg-destructive/10"
                   disabled={uploading}
                 >
-                  Clear all
+                  Clear All
                 </Button>
               )}
             </div>
             <div className="flex items-center gap-2">
+              {/* Secondary Paste Button */}
+              <Button
+                type="button"
+                onClick={handlePasteFromButton}
+                size="icon"
+                variant="outline"
+                disabled={uploading}
+                className="rounded-full h-10 w-10"
+                title="Paste from Clipboard"
+              >
+                <ClipboardPaste className="h-4 w-4 text-muted-foreground" />
+              </Button>
+              
               <Button
                 onClick={() => {
                   setSelectedFiles([]);
@@ -302,22 +384,22 @@ export const FileUpload = ({ roomId, userId, disabled, onFileUploaded }: FileUpl
                 size="sm"
                 variant="outline"
                 disabled={uploading}
-                className="rounded-lg"
+                className="rounded-full h-10 px-4 font-bold text-xs"
               >
-                Add more
+                Add More
               </Button>
               <Button
                 onClick={uploadFile}
                 disabled={uploading || selectedFiles.every(f => f.progress === 100)}
                 size="sm"
-                className="rounded-lg"
+                className="rounded-full h-10 px-5 font-bold shadow-md hover:shadow-lg active:scale-95 transition-all"
               >
                 {uploading ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-1" />
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
                 ) : (
-                  <Upload className="h-4 w-4 mr-1" />
+                  <Upload className="h-4 w-4 mr-2" />
                 )}
-                Upload {selectedFiles.length > 1 ? `(${selectedFiles.length})` : ''}
+                Upload
               </Button>
             </div>
           </div>

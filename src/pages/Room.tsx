@@ -6,8 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
-import { Upload, LogOut, Copy, Check, FileText, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Shield, Lock, Globe, Loader2, Info } from "lucide-react";
-import { FileUpload } from "@/components/room/FileUpload";
+import { Upload, LogOut, Copy, Check, FileText, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Shield, Lock, Globe, Loader2, Info, QrCode, CodeXml } from "lucide-react";import { FileUpload } from "@/components/room/FileUpload";
 import { FileList } from "@/components/room/FileList";
 import { MarkdownEditor } from "@/components/room/MarkdownEditor";
 import { JoinRequestDialog } from "@/components/room/JoinRequestDialog";
@@ -16,6 +15,7 @@ import { PasswordEntryModal } from "@/components/room/PasswordEntryModal";
 import { getDeviceId } from "@/utils/deviceId";
 import { RoomSettings } from "@/components/room/RoomSettings";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface Room {
   id: string;
@@ -43,6 +43,7 @@ const Room = () => {
   const [showJoinDialog, setShowJoinDialog] = useState(false);
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showQrModal, setShowQrModal] = useState(false);
   const [hasAccess, setHasAccess] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [filesRefreshTrigger, setFilesRefreshTrigger] = useState(0);
@@ -137,18 +138,24 @@ const Room = () => {
     } catch (error: any) { toast({ title: "Error", description: error.message, variant: "destructive" }); }
   };
 
+  const getShareUrl = () => {
+    if (!room) return window.location.href;
+    let shareUrl = `${window.location.origin}/room/${room.room_code}`;
+    if (room.room_type === "private_key" && room.room_password) {
+      shareUrl += `?password=${encodeURIComponent(room.room_password)}`;
+    }
+    return shareUrl;
+  };
+
   const copyRoomLink = () => {
-    navigator.clipboard.writeText(window.location.href);
+    navigator.clipboard.writeText(getShareUrl());
     setCopied(true);
     toast({ title: "Link copied to clipboard", className: "rounded-full" });
     setTimeout(() => setCopied(false), 2000);
   };
 
   const shareRoomWithPassword = () => {
-    if (!room) return;
-    let shareUrl = `${window.location.origin}/room/${room.room_code}`;
-    if (room.room_type === "private_key" && room.room_password) shareUrl += `?password=${encodeURIComponent(room.room_password)}`;
-    navigator.clipboard.writeText(shareUrl);
+    navigator.clipboard.writeText(getShareUrl());
     setCopied(true);
     toast({ title: "Link copied", description: "Password is included in the URL.", className: "rounded-full" });
     setTimeout(() => setCopied(false), 2000);
@@ -177,14 +184,12 @@ const Room = () => {
   if (!hasAccess && room) {
     return (
       <div className="min-h-screen bg-slate-50 dark:bg-zinc-950 flex items-center justify-center p-4 selection:bg-primary/30">
-        {/* Soft Ambient Background Elements */}
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-blue-500/10 rounded-full blur-[100px] pointer-events-none" />
         
         <JoinRequestDialog isOpen={showJoinDialog} onClose={() => navigate("/")} onSubmit={handleJoinRequest} roomType={room.room_type} requiresPassword={false} />
         <PasswordEntryModal isOpen={showPasswordModal} onClose={() => navigate("/")} onSubmit={handlePasswordSubmit} />
         
-        {/* Fallback Glass Card if dialogs are closed */}
         <Card className="p-10 text-center max-w-sm w-full bg-white/40 dark:bg-zinc-900/40 backdrop-blur-2xl border border-white/20 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] rounded-[2rem] z-10">
           <div className="w-16 h-16 bg-muted/50 rounded-full flex items-center justify-center mx-auto mb-6 shadow-inner ring-1 ring-border/50">
              <Shield className="h-8 w-8 text-muted-foreground" />
@@ -221,7 +226,14 @@ const Room = () => {
           </div>
 
           {/* Desktop Actions */}
+          {/* Desktop Actions */}
           <div className="hidden sm:flex items-center gap-2">
+            <Button onClick={() => navigate("/contributors")} variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all text-muted-foreground hover:text-foreground" title="Contributors">
+              <CodeXml className="h-5 w-5" />
+            </Button>
+            <Button onClick={() => setShowQrModal(true)} variant="outline" size="icon" className="h-9 w-9 rounded-full border-border/50 bg-background/50 backdrop-blur-md shadow-sm hover:shadow active:scale-95 transition-all" title="Show QR Code">
+              <QrCode className="h-4 w-4" />
+            </Button>
             <Button onClick={copyRoomLink} variant="outline" size="sm" className="h-9 px-4 rounded-full text-xs font-bold border-border/50 bg-background/50 backdrop-blur-md shadow-sm hover:shadow active:scale-95 transition-all">
               {copied ? <Check className="h-4 w-4 mr-2 text-emerald-500" /> : <Copy className="h-4 w-4 mr-2" />}
               {copied ? "COPIED" : "COPY LINK"}
@@ -274,6 +286,9 @@ const Room = () => {
                     </div>
                   )}
                   
+                  <Button onClick={() => { setShowQrModal(true); setIsMobileMenuOpen(false); }} variant="outline" className="w-full justify-start h-14 rounded-full text-sm font-bold border-border/50 bg-background/50 shadow-sm active:scale-95 transition-all">
+                    <QrCode className="h-5 w-5 mr-3 text-primary" /> SHOW QR CODE
+                  </Button>
                   <Button onClick={() => { copyRoomLink(); setIsMobileMenuOpen(false); }} variant="outline" className="w-full justify-start h-14 rounded-full text-sm font-bold border-border/50 bg-background/50 shadow-sm active:scale-95 transition-all">
                     <Copy className="h-5 w-5 mr-3" /> COPY LINK
                   </Button>
@@ -282,6 +297,9 @@ const Room = () => {
                   </Button>
                   <Button onClick={() => { refreshRoomData(); setIsMobileMenuOpen(false); }} variant="outline" className="w-full justify-start h-14 rounded-full text-sm font-bold border-border/50 bg-background/50 shadow-sm active:scale-95 transition-all" disabled={refreshing}>
                     <RefreshCw className={`h-5 w-5 mr-3 ${refreshing ? 'animate-spin' : ''}`} /> REFRESH
+                  </Button>
+                  <Button onClick={() => { navigate("/contributors"); setIsMobileMenuOpen(false); }} variant="outline" className="w-full justify-start h-14 rounded-full text-sm font-bold border-border/50 bg-background/50 shadow-sm active:scale-95 transition-all">
+                    <CodeXml className="h-5 w-5 mr-3" /> CONTRIBUTORS
                   </Button>
                   
                   {(room.room_type === "public" || isHost) && (
@@ -303,7 +321,7 @@ const Room = () => {
       </header>
 
       {/* MAIN WORKSPACE */}
-      <main className="flex-1 w-full max-w-4xl mx-auto p-4 sm:p-6 pb-28 sm:pb-10 relative z-10">
+      <main className="flex-1 w-full max-w-6xl mx-auto p-4 sm:p-6 pb-28 sm:pb-10 relative z-10">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
           
           {/* iOS Segmented Control (Desktop Only) */}
@@ -339,7 +357,7 @@ const Room = () => {
 
           {/* Notes Content */}
           <TabsContent value="markdown" className="mt-0 outline-none animate-in fade-in zoom-in-95 duration-500">
-            <Card className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] rounded-[2rem] min-h-[70vh] flex flex-col overflow-hidden">
+            <Card className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] rounded-[2rem] min-h-[85vh] flex flex-col overflow-hidden">
               <MarkdownEditor roomId={room.id} userId={userId} />
             </Card>
           </TabsContent>
@@ -376,6 +394,33 @@ const Room = () => {
           </button>
         </div>
       </div>
+
+      {/* QR Code Modal */}
+      <Dialog open={showQrModal} onOpenChange={setShowQrModal}>
+        <DialogContent className="sm:max-w-md rounded-[2.5rem] border-white/20 bg-background/80 backdrop-blur-3xl shadow-2xl p-8 flex flex-col items-center justify-center animate-in zoom-in-95 duration-300">
+          <DialogHeader className="text-center mb-2">
+            <DialogTitle className="text-2xl font-extrabold tracking-tight">Room QR Code</DialogTitle>
+            <DialogDescription className="text-sm font-medium mt-2">
+              Scan to join this workspace instantly.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-white p-5 rounded-[2rem] shadow-inner border border-black/5 my-6">
+            <img 
+              src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(getShareUrl())}&color=000000&bgcolor=ffffff`} 
+              alt="Room QR Code" 
+              className="w-48 h-48 sm:w-56 sm:h-56"
+            />
+          </div>
+          
+          <Button 
+            onClick={copyRoomLink} 
+            className="w-full h-14 rounded-full text-sm font-bold shadow-lg active:scale-95 transition-all"
+          >
+            <Copy className="h-5 w-5 mr-2" /> Copy Link Instead
+          </Button>
+        </DialogContent>
+      </Dialog>
 
     </div>
   );
