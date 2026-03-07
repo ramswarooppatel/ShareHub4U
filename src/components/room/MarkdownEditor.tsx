@@ -4,9 +4,9 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger, DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
-import { Save, Eye, Edit, Loader2, FileText, Plus, Trash2, Share2, Type, Check } from "lucide-react";
+import { Save, Eye, Edit, Loader2, FileText, Plus, Trash2, Share2, Type, Check, Download, FileJson, File, Printer } from "lucide-react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import remarkBreaks from "remark-breaks";
@@ -151,6 +151,81 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
     toast({ title: "Link copied!", className: "rounded-full py-2 px-4 text-sm" });
   };
 
+  // Document Download Logic
+  const handleDownloadFile = (note: MarkdownNote | null, format: "txt" | "md" | "pdf") => {
+    if (!note || (!note.title.trim() && !note.content.trim())) return;
+    
+    const safeTitle = note.title.trim().replace(/[^a-z0-9]/gi, '_').toLowerCase() || "untitled_note";
+
+    if (format === "txt" || format === "md") {
+      const blob = new Blob([note.content], { type: format === 'md' ? 'text/markdown' : 'text/plain' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = `${safeTitle}.${format}`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+      toast({ title: `Downloaded as .${format}`, className: "rounded-full py-2 px-4 text-sm" });
+    } else if (format === "pdf") {
+      // PDF Print Export Logic
+      selectNote(note);
+      setEditorMode("preview");
+      toast({ title: "Preparing Document...", description: "Opening print dialog.", className: "rounded-full py-2 px-4 text-sm" });
+      
+      setTimeout(() => {
+        const proseElement = document.querySelector('.markdown-preview-content');
+        if (!proseElement) {
+          toast({ title: "Error generating PDF", variant: "destructive" });
+          return;
+        }
+
+        const iframe = document.createElement('iframe');
+        iframe.style.display = 'none';
+        document.body.appendChild(iframe);
+
+        // Injecting basic professional styles for the PDF print
+        const htmlContent = `
+          <html>
+            <head>
+              <title>${note.title || 'Note'}</title>
+              <style>
+                body { font-family: system-ui, -apple-system, sans-serif; padding: 3rem; color: #000; line-height: 1.6; max-width: 800px; margin: 0 auto; }
+                h1, h2, h3, h4 { border-bottom: 1px solid #eaeaea; padding-bottom: 0.5rem; margin-top: 2rem; color: #111; }
+                h1 { font-size: 2.5rem; margin-top: 0; margin-bottom: 2rem; }
+                code { background: #f4f4f5; padding: 0.2rem 0.4rem; border-radius: 4px; font-family: monospace; font-size: 0.9em; }
+                pre { background: #1e1e1e; color: #fff; padding: 1rem; border-radius: 8px; overflow-x: auto; margin: 1.5rem 0; }
+                pre code { background: transparent; color: inherit; padding: 0; }
+                blockquote { border-left: 4px solid #d4d4d8; padding-left: 1rem; color: #52525b; font-style: italic; margin: 1.5rem 0; }
+                table { border-collapse: collapse; width: 100%; margin: 1.5rem 0; }
+                th, td { border: 1px solid #d4d4d8; padding: 0.75rem; text-align: left; }
+                th { background: #f4f4f5; }
+                img { max-width: 100%; border-radius: 8px; margin: 1.5rem 0; }
+                a { color: #2563eb; text-decoration: none; }
+              </style>
+            </head>
+            <body>
+              <h1>${note.title || 'Untitled Note'}</h1>
+              ${proseElement.innerHTML}
+            </body>
+          </html>
+        `;
+
+        iframe.contentDocument?.write(htmlContent);
+        iframe.contentDocument?.close();
+
+        iframe.onload = () => {
+          setTimeout(() => {
+            iframe.contentWindow?.focus();
+            iframe.contentWindow?.print();
+            setTimeout(() => document.body.removeChild(iframe), 2000);
+          }, 500);
+        };
+      }, 500); // Give the react-markdown component time to render
+    }
+  };
+
   // Glassy & Curvy Markdown Components
   const MarkdownComponents = {
     code({ node, inline, className, children, ...props }: any) {
@@ -281,16 +356,40 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
                           {new Date(note.updated_at).toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
                         </p>
                       </div>
-                      {note.created_by === userId && (
-                        <Button
-                          onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
-                          size="icon"
-                          variant="ghost"
-                          className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-all text-muted-foreground hover:text-destructive hover:bg-destructive/10 shrink-0 rounded-full"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      )}
+                      
+                      {/* Sidebar Actions: Download & Delete */}
+                      <div className="flex flex-col items-end gap-1 opacity-0 group-hover:opacity-100 transition-all shrink-0">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button size="icon" variant="ghost" className="h-7 w-7 rounded-full text-muted-foreground hover:bg-background/80 hover:text-foreground">
+                              <Download className="h-3.5 w-3.5" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end" className="rounded-xl w-40 border-white/10 bg-background/95 backdrop-blur-xl p-1 z-50">
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDownloadFile(note, "md"); }} className="rounded-lg text-xs font-medium cursor-pointer py-2">
+                              <FileJson className="h-3.5 w-3.5 mr-2 text-primary" /> Markdown (.md)
+                            </DropdownMenuItem>
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDownloadFile(note, "txt"); }} className="rounded-lg text-xs font-medium cursor-pointer py-2">
+                              <FileText className="h-3.5 w-3.5 mr-2 text-muted-foreground" /> Plain Text (.txt)
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator className="bg-border/50" />
+                            <DropdownMenuItem onClick={(e) => { e.stopPropagation(); handleDownloadFile(note, "pdf"); }} className="rounded-lg text-xs font-medium cursor-pointer py-2">
+                              <Printer className="h-3.5 w-3.5 mr-2 text-amber-500" /> Save as PDF
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+
+                        {note.created_by === userId && (
+                          <Button
+                            onClick={(e) => { e.stopPropagation(); deleteNote(note.id); }}
+                            size="icon"
+                            variant="ghost"
+                            className="h-7 w-7 rounded-full text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))
@@ -307,7 +406,7 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
             <div className="shrink-0 p-4 border-b border-white/20 dark:border-white/10 bg-white/30 dark:bg-black/10 backdrop-blur-xl">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                 
-                {/* Title Input & Share */}
+                {/* Title Input & Tool Actions */}
                 <div className="flex-1 flex items-center gap-2 w-full">
                   <Input
                     value={title}
@@ -315,16 +414,44 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
                     placeholder="Note Title..."
                     className="text-lg sm:text-xl border border-white/10 dark:border-white/10 font-bold h-10 w-full bg-transparent hover:bg-white/40 dark:hover:bg-white/5 focus-visible:bg-white/60 dark:focus-visible:bg-zinc-800/60 focus-visible:border-primary/30 focus-visible:ring-2 focus-visible:ring-primary/10 transition-all rounded-xl shadow-none placeholder:text-muted-foreground/40 px-3"
                   />
-                  {currentNote && (
-                    <Button onClick={copyNoteLink} size="icon" variant="ghost" className="h-9 w-9 shrink-0 rounded-full hover:bg-white/60 dark:hover:bg-white/10 active:scale-95 transition-all">
-                      <Share2 className="h-4 w-4 text-muted-foreground" />
-                    </Button>
+                  
+                  {/* Share & Download Buttons */}
+                  {(title.trim() || content.trim()) && (
+                    <div className="flex items-center gap-1 shrink-0">
+                      
+                      {/* Main Download Dropdown */}
+                      <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                          <Button variant="ghost" size="icon" className="h-9 w-9 rounded-full hover:bg-white/60 dark:hover:bg-white/10 active:scale-95 transition-all" title="Download Note">
+                            <Download className="h-4 w-4 text-muted-foreground" />
+                          </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent align="end" className="rounded-xl w-48 border-white/10 bg-background/95 backdrop-blur-xl p-1">
+                          <DropdownMenuItem onClick={() => handleDownloadFile(currentNote || { id: "", title, content, created_at: "", updated_at: "", created_by: "" }, "md")} className="rounded-lg text-sm font-medium cursor-pointer py-2">
+                            <FileJson className="h-4 w-4 mr-2 text-primary" /> Markdown (.md)
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => handleDownloadFile(currentNote || { id: "", title, content, created_at: "", updated_at: "", created_by: "" }, "txt")} className="rounded-lg text-sm font-medium cursor-pointer py-2">
+                            <FileText className="h-4 w-4 mr-2 text-muted-foreground" /> Plain Text (.txt)
+                          </DropdownMenuItem>
+                          <DropdownMenuSeparator className="bg-border/50" />
+                          <DropdownMenuItem onClick={() => handleDownloadFile(currentNote || { id: "", title, content, created_at: "", updated_at: "", created_by: "" }, "pdf")} className="rounded-lg text-sm font-medium cursor-pointer py-2">
+                            <Printer className="h-4 w-4 mr-2 text-amber-500" /> Save as PDF
+                          </DropdownMenuItem>
+                        </DropdownMenuContent>
+                      </DropdownMenu>
+
+                      {currentNote && (
+                        <Button onClick={copyNoteLink} size="icon" variant="ghost" className="h-9 w-9 rounded-full hover:bg-white/60 dark:hover:bg-white/10 active:scale-95 transition-all" title="Copy Share Link">
+                          <Share2 className="h-4 w-4 text-muted-foreground" />
+                        </Button>
+                      )}
+                    </div>
                   )}
                   
                   {/* Font Size Toggle */}
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full hover:bg-white/60 dark:hover:bg-white/10 active:scale-95 transition-all">
+                      <Button variant="ghost" size="icon" className="h-9 w-9 shrink-0 rounded-full hover:bg-white/60 dark:hover:bg-white/10 active:scale-95 transition-all" title="Text Size">
                         <Type className="h-4 w-4 text-muted-foreground" />
                       </Button>
                     </DropdownMenuTrigger>
@@ -370,7 +497,7 @@ export const MarkdownEditor = ({ roomId, userId }: MarkdownEditorProps) => {
                 </div>
               ) : (
                 <div className="absolute inset-0 p-6 sm:p-8 lg:p-10 overflow-y-auto overflow-x-hidden custom-scrollbar bg-background/20">
-                  <div className={`prose dark:prose-invert max-w-3xl mx-auto w-full break-words
+                  <div className={`prose dark:prose-invert max-w-3xl mx-auto w-full break-words markdown-preview-content
                       prose-headings:font-bold prose-headings:tracking-tight
                       prose-a:text-primary prose-a:underline-offset-4 prose-a:decoration-primary/30 hover:prose-a:decoration-primary
                       prose-hr:border-white/20 dark:prose-hr:border-white/10
