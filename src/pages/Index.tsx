@@ -1,13 +1,14 @@
 import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { Switch } from "@/components/ui/switch";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Lock, Key, Globe, ArrowRight, Sparkles, Shield, Zap, Hash, Plus } from "lucide-react";
+import { Loader2, Lock, Key, Globe, ArrowRight, Sparkles, Shield, Zap, Hash, Plus, Settings, List, Trash, X } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -29,11 +30,66 @@ const Index = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
   const [nearbyRooms, setNearbyRooms] = useState<{room_code:string; display_name?:string; last_seen?:string}[]>([]);
+  const [recentRooms, setRecentRooms] = useState<string[]>([]);
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const SETTINGS_KEY = "sharehub_settings"; // stored in sessionStorage
+  const defaultSettings = { hideNearbyRooms: false, saveRoomHistory: true };
+  const [settings, setSettings] = useState<{ hideNearbyRooms: boolean; saveRoomHistory: boolean }>(defaultSettings);
 
   const joinCodeInputRef = useRef<HTMLInputElement>(null);
 
   // --- LOGIC FUNCTIONS ---
   const generateRoomCode = () => Math.random().toString(36).substring(2, 8).toLowerCase();
+
+  const RECENT_ROOMS_KEY = "recent_room_codes";
+  const loadRecentRooms = () => {
+    try {
+      const raw = localStorage.getItem(RECENT_ROOMS_KEY);
+      if (!raw) return [] as string[];
+      const parsed = JSON.parse(raw || "[]");
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (e) {
+      return [] as string[];
+    }
+  };
+
+  const saveRecentRooms = (arr: string[]) => {
+    try { localStorage.setItem(RECENT_ROOMS_KEY, JSON.stringify(arr)); } catch (e) {}
+  };
+
+  const addRecentRoom = (roomCode: string) => {
+    if (!roomCode) return;
+    // obey settings: do not save if saveRoomHistory is false
+    if (!settings.saveRoomHistory) return;
+    setRecentRooms((prev) => {
+      const dedup = [roomCode, ...prev.filter(r => r !== roomCode)].slice(0, 8);
+      saveRecentRooms(dedup);
+      return dedup;
+    });
+  };
+
+  const removeRecentRoom = (roomCode: string) => {
+    setRecentRooms(prev => {
+      const next = prev.filter(r => r !== roomCode);
+      saveRecentRooms(next);
+      return next;
+    });
+  };
+
+  const saveSettingsToSession = (s: typeof settings) => {
+    try { sessionStorage.setItem(SETTINGS_KEY, JSON.stringify(s)); } catch (e) {}
+  };
+
+  const loadSettingsFromSession = () => {
+    try {
+      const raw = sessionStorage.getItem(SETTINGS_KEY);
+      if (!raw) return defaultSettings;
+      const parsed = JSON.parse(raw);
+      return { ...defaultSettings, ...(parsed || {}) };
+    } catch (e) { return defaultSettings; }
+  };
+
 
   const createRoom = async () => {
     if (roomType === "private_key" && !roomPassword.trim()) {
@@ -73,6 +129,7 @@ const Index = () => {
       if (error) throw error;
 
       toast({ title: "Room created!", description: `Room code: ${roomCode}` });
+      addRecentRoom(roomCode);
       navigate(`/room/${roomCode}`);
     } catch (error: any) {
       toast({ title: "Error", description: error.message || "Something went wrong.", variant: "destructive" });
@@ -83,9 +140,20 @@ const Index = () => {
 
   // poll for nearby rooms (server-assisted) every 20s
   useEffect(() => {
+    // load settings and recent rooms on mount
+    const s = loadSettingsFromSession();
+    setSettings(s);
+    if (s.saveRoomHistory) {
+      try { setRecentRooms(loadRecentRooms()); } catch (e) {}
+    } else {
+      setRecentRooms([]);
+    }
+
     let mounted = true;
     let interval: any;
     const loadNearby = async () => {
+      if (!mounted) return;
+      if (settings.hideNearbyRooms) { setNearbyRooms([]); return; }
       const { fetchNearbyRooms } = await import('@/lib/presence');
       const rooms = await fetchNearbyRooms();
       if (!mounted) return;
@@ -94,7 +162,19 @@ const Index = () => {
     loadNearby();
     interval = setInterval(loadNearby, 20_000);
     return () => { mounted = false; clearInterval(interval); };
-  }, []);
+  }, []); // intentionally run once on mount
+
+  // keep nearby rooms in sync when settings change
+  useEffect(() => {
+    if (settings.hideNearbyRooms) setNearbyRooms([]);
+    saveSettingsToSession(settings);
+    // if saving toggled off, clear recentRooms state
+    if (!settings.saveRoomHistory) {
+      setRecentRooms([]);
+    } else {
+      try { setRecentRooms(loadRecentRooms()); } catch (e) {}
+    }
+  }, [settings]);
 
   const joinRoom = async () => {
     if (!joinCode.trim()) { toast({ title: "Enter a code", description: "Please enter a room code.", variant: "destructive" }); return; }
@@ -108,6 +188,7 @@ const Index = () => {
         setPendingRoomData({ room_code: roomData.room_code, room_type: roomData.room_type, room_password: roomData.room_password || undefined });
         setShowJoinPasswordDialog(true);
       } else {
+        addRecentRoom(roomData.room_code);
         navigate(`/room/${roomData.room_code}`);
       }
     } catch (error: any) {
@@ -117,6 +198,7 @@ const Index = () => {
 
   const handleJoinPasswordSubmit = async () => {
     if (joinPassword !== pendingRoomData?.room_password) { toast({ title: "Incorrect", description: "Wrong password.", variant: "destructive" }); return; }
+    addRecentRoom(pendingRoomData!.room_code);
     navigate(`/room/${pendingRoomData.room_code}?password=${encodeURIComponent(joinPassword)}`);
     setShowJoinPasswordDialog(false); setJoinPassword(""); setPendingRoomData(null);
   };
@@ -124,16 +206,38 @@ const Index = () => {
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/30 selection:text-primary">
       {/* Header */}
-      <header className="p-4 sm:p-6 flex items-center justify-center w-full max-w-5xl mx-auto border-b sm:border-none border-border">
-        <div className="flex items-center gap-2 group cursor-pointer">
-          <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
-            <Zap className="h-5 w-5 text-primary-foreground" />
-          </div>
-          <span className="font-extrabold text-2xl tracking-tight text-foreground uppercase">
-            SHARE HUB 4 U
-          </span>
-        </div>
-      </header>
+          <header className="p-4 sm:p-6 flex items-center w-full max-w-5xl mx-auto border-b sm:border-none border-border">
+            <div className="flex items-center justify-between w-full">
+              <div className="flex items-center gap-2 group cursor-pointer">
+                <div className="w-10 h-10 rounded-xl bg-primary flex items-center justify-center shadow-md">
+                  <Zap className="h-5 w-5 text-primary-foreground" />
+                </div>
+                <span className="font-extrabold text-2xl tracking-tight text-foreground uppercase">
+                  SHARE HUB 4 U
+                </span>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" onClick={() => setHistoryOpen(true)} className="h-8 px-2">
+                  <List className="h-4 w-4" />
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setSettingsOpen(true)} className="h-8 px-2">
+                  <Settings className="h-4 w-4" />
+                </Button>
+                {recentRooms.length > 0 && (
+                  <div className="flex items-center gap-2">
+                    {recentRooms.slice(0,3).map(code => (
+                      <div key={code} className="inline-flex items-center bg-muted rounded-full px-2 py-0.5"> 
+                        <Button size="sm" variant="ghost" onClick={() => navigate(`/room/${code}`)} className="h-7 px-3 rounded-full font-mono">{code}</Button>
+                        <Button size="sm" variant="ghost" onClick={() => removeRecentRoom(code)} className="h-7 px-2"> <X className="h-3.5 w-3.5" /> </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <Button size="sm" variant="outline" onClick={() => { setRecentRooms([]); saveRecentRooms([]); }} className="h-8 ml-2">Clear</Button>
+              </div>
+            </div>
+          </header>
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12 w-full max-w-md mx-auto">
@@ -288,6 +392,62 @@ const Index = () => {
           <DialogFooter className="flex-col sm:flex-row gap-3">
             <Button variant="outline" className="h-12 rounded-xl border-2 w-full sm:w-auto font-bold" onClick={() => setShowJoinPasswordDialog(false)}>Cancel</Button>
             <Button className="h-12 rounded-xl w-full sm:w-auto font-bold" onClick={handleJoinPasswordSubmit}>Join Room</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Settings Dialog */}
+      <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+        <DialogContent className="w-[90vw] max-w-sm rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Settings</DialogTitle>
+            <DialogDescription>Session settings (stored in sessionStorage)</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">Hide Nearby Rooms</div>
+                <div className="text-xs text-muted-foreground">When enabled nearby rooms panel is hidden</div>
+              </div>
+              <Switch checked={settings.hideNearbyRooms} onCheckedChange={(v: boolean) => setSettings(prev => ({...prev, hideNearbyRooms: v}))} />
+            </div>
+
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="font-medium">Save Room History</div>
+                <div className="text-xs text-muted-foreground">Control whether recent rooms are stored locally</div>
+              </div>
+              <Switch checked={settings.saveRoomHistory} onCheckedChange={(v: boolean) => setSettings(prev => ({...prev, saveRoomHistory: v}))} />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setSettingsOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Recent Rooms History Dialog */}
+      <Dialog open={historyOpen} onOpenChange={setHistoryOpen}>
+        <DialogContent className="w-[90vw] max-w-md rounded-3xl p-6">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold">Recent Rooms</DialogTitle>
+            <DialogDescription>Saved recent room codes</DialogDescription>
+          </DialogHeader>
+          <div className="py-4 space-y-3">
+            {recentRooms.length === 0 && <div className="text-sm text-muted-foreground">No recent rooms.</div>}
+            {recentRooms.map(code => (
+              <div key={code} className="flex items-center justify-between px-3 py-2 bg-background/50 rounded-lg">
+                <div className="font-mono font-medium">{code}</div>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" onClick={() => { navigate(`/room/${code}`); setHistoryOpen(false); }}>Open</Button>
+                  <Button size="sm" variant="ghost" onClick={() => removeRecentRoom(code)}><Trash className="h-4 w-4" /></Button>
+                </div>
+              </div>
+            ))}
+          </div>
+          <DialogFooter className="flex items-center justify-between">
+            <Button variant="outline" onClick={() => { setRecentRooms([]); saveRecentRooms([]); }}>Clear All</Button>
+            <Button onClick={() => setHistoryOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
