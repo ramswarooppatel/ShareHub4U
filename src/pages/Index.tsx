@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -28,6 +28,7 @@ const Index = () => {
   const [pendingRoomData, setPendingRoomData] = useState<{ room_code: string; room_type: string; room_password?: string; } | null>(null);
   const [isCreating, setIsCreating] = useState(false);
   const [isJoining, setIsJoining] = useState(false);
+  const [nearbyRooms, setNearbyRooms] = useState<{room_code:string; display_name?:string; last_seen?:string}[]>([]);
 
   const joinCodeInputRef = useRef<HTMLInputElement>(null);
 
@@ -80,6 +81,21 @@ const Index = () => {
     }
   };
 
+  // poll for nearby rooms (server-assisted) every 20s
+  useEffect(() => {
+    let mounted = true;
+    let interval: any;
+    const loadNearby = async () => {
+      const { fetchNearbyRooms } = await import('@/lib/presence');
+      const rooms = await fetchNearbyRooms();
+      if (!mounted) return;
+      setNearbyRooms(rooms || []);
+    };
+    loadNearby();
+    interval = setInterval(loadNearby, 20_000);
+    return () => { mounted = false; clearInterval(interval); };
+  }, []);
+
   const joinRoom = async () => {
     if (!joinCode.trim()) { toast({ title: "Enter a code", description: "Please enter a room code.", variant: "destructive" }); return; }
     setIsJoining(true);
@@ -121,7 +137,28 @@ const Index = () => {
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center px-4 py-8 sm:py-12 w-full max-w-md mx-auto">
-        
+        {/* Nearby Rooms (server-assisted) */}
+        {nearbyRooms.length > 0 && (
+          <div className="w-full max-w-md mb-6">
+            <Card className="p-4 bg-card rounded-xl border-border/40">
+              <h4 className="text-sm font-bold mb-2">Nearby Rooms</h4>
+              <div className="flex flex-col gap-2">
+                {nearbyRooms.map(r => (
+                  <div key={r.room_code} className="flex items-center justify-between px-3 py-2 rounded-lg bg-background/30">
+                    <div>
+                      <div className="font-semibold">{r.display_name || r.room_code}</div>
+                      <div className="text-xs text-muted-foreground">{r.room_code}</div>
+                    </div>
+                    <div>
+                      <Button onClick={() => navigate(`/room/${r.room_code}`)} size="sm">Join</Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </Card>
+          </div>
+        )}
+
         <div className="text-center mb-8 space-y-3">
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary/10 text-primary text-xs font-bold uppercase tracking-wider">
             <Sparkles className="h-3.5 w-3.5" /> Fast & Secure

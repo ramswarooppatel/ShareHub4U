@@ -61,6 +61,19 @@ const Room = () => {
 
   useEffect(() => { initializeUser(); }, []);
   useEffect(() => { if (userId) loadRoom(); }, [slug, userId]);
+  
+  // register presence for nearby discovery while inside a room
+  useEffect(() => {
+    let interval: any;
+    const start = async () => {
+      if (!room || !hasAccess) return;
+      const { registerPresence } = await import('@/lib/presence');
+      await registerPresence(room.room_code, room.room_code);
+      interval = setInterval(() => registerPresence(room.room_code, room.room_code), 30_000);
+    };
+    start();
+    return () => { if (interval) clearInterval(interval); };
+  }, [room, hasAccess]);
 
   const initializeUser = async () => {
     const storedUserId = localStorage.getItem("user_id");
