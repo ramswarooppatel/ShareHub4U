@@ -20,7 +20,9 @@ import {
   Music,
   FileSpreadsheet,
   Presentation,
-  Printer
+  Printer,
+  Smartphone,
+  Copy
 } from "lucide-react";
 import { FilePreviewModal } from "./FilePreviewModal";
 import {
@@ -33,6 +35,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 
 interface File {
   id: string;
@@ -74,6 +77,9 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
   const [zipProgress, setZipProgress] = useState<number | null>(null);
   const [printingFileId, setPrintingFileId] = useState<string | null>(null);
 
+  // Send to Phone State
+  const [qrFile, setQrFile] = useState<File | null>(null);
+
   useEffect(() => {
     loadFiles();
     const cleanup = setupRealtimeSubscription();
@@ -92,11 +98,7 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
       if (error) throw error;
       setFiles(data || []);
     } catch (error: any) {
-      toast({
-        title: "Error loading files",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error loading files", description: error.message, variant: "destructive" });
     } finally {
       setLoading(false);
     }
@@ -107,12 +109,7 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
       .channel('file-changes')
       .on(
         'postgres_changes',
-        {
-          event: '*',
-          schema: 'public',
-          table: 'room_files',
-          filter: `room_id=eq.${roomId}`
-        },
+        { event: '*', schema: 'public', table: 'room_files', filter: `room_id=eq.${roomId}` },
         (payload) => {
           if (payload.eventType === 'INSERT' && payload.new) {
             setFiles(prev => [payload.new as File, ...prev]);
@@ -125,35 +122,21 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
       )
       .subscribe();
 
-    return () => {
-      supabase.removeChannel(channel);
-    };
+    return () => { supabase.removeChannel(channel); };
   };
 
   const handleDeleteFile = async (file: File) => {
     setIsDeleting(true);
     try {
-      const { error: storageError } = await supabase.storage
-        .from("room-files")
-        .remove([file.file_path]);
-
+      const { error: storageError } = await supabase.storage.from("room-files").remove([file.file_path]);
       if (storageError) throw storageError;
-
-      const { error: dbError } = await supabase
-        .from("room_files")
-        .delete()
-        .eq("id", file.id);
-
+      const { error: dbError } = await supabase.from("room_files").delete().eq("id", file.id);
       if (dbError) throw dbError;
-
+      
       toast({ title: "File deleted", description: `${file.file_name} has been removed.`, className: "rounded-full" });
       setDeleteFile(null);
     } catch (error: any) {
-      toast({
-        title: "Error deleting file",
-        description: error.message,
-        variant: "destructive",
-      });
+      toast({ title: "Error deleting file", description: error.message, variant: "destructive" });
     } finally {
       setIsDeleting(false);
     }
@@ -180,9 +163,7 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
       }
 
       const content = await zip.generateAsync({ type: 'blob' }, (metadata: any) => {
-        if (Math.round(metadata.percent) % 5 === 0) {
-          setZipProgress(Math.round(metadata.percent));
-        }
+        if (Math.round(metadata.percent) % 5 === 0) setZipProgress(Math.round(metadata.percent));
       });
 
       const url = URL.createObjectURL(content);
@@ -210,7 +191,6 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
       const response = await fetch(file.file_url);
       const blob = await response.blob();
       const blobUrl = URL.createObjectURL(blob);
-
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
@@ -221,11 +201,7 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
         setTimeout(() => {
           iframe.contentWindow?.focus();
           iframe.contentWindow?.print();
-          
-          setTimeout(() => {
-            document.body.removeChild(iframe);
-            URL.revokeObjectURL(blobUrl);
-          }, 1000);
+          setTimeout(() => { document.body.removeChild(iframe); URL.revokeObjectURL(blobUrl); }, 1000);
         }, 500);
       };
 
@@ -243,12 +219,17 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
         iframe.src = blobUrl;
       }
     } catch (error) {
-      console.error("Direct print failed:", error);
       toast({ title: "Print failed", description: "Falling back to new tab.", variant: "destructive" });
       window.open(file.file_url, "_blank");
     } finally {
       setPrintingFileId(null);
     }
+  };
+
+  const copyFileLink = () => {
+    if (!qrFile) return;
+    navigator.clipboard.writeText(qrFile.file_url);
+    toast({ title: "Link copied!", className: "rounded-full" });
   };
 
   const formatFileSize = (bytes: number) => {
@@ -262,7 +243,6 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
     return date.toLocaleDateString(undefined, { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' });
   };
 
-  // Helper to check if file can be natively printed via browser iframe
   const isPrintable = (file: File) => {
     const type = file.file_type.toLowerCase();
     const ext = file.file_name.split('.').pop()?.toLowerCase() || '';
@@ -307,7 +287,6 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
     
     const matchesSearch = fileName.includes(query) || (query.startsWith('.') && fileExt === query.slice(1)) || fileExt.includes(query);
     if (!matchesSearch) return false;
-    
     if (activeFilter === "all") return true;
     return getFileCategory(file.file_type, file.file_name) === activeFilter;
   });
@@ -366,16 +345,43 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
         </AlertDialogContent>
       </AlertDialog>
 
+      {/* QR Code Send to Phone Modal */}
+      <Dialog open={!!qrFile} onOpenChange={(open) => !open && setQrFile(null)}>
+        <DialogContent className="sm:max-w-sm rounded-[2.5rem] border-white/20 bg-background/80 backdrop-blur-3xl shadow-2xl p-8 flex flex-col items-center justify-center animate-in zoom-in-95 duration-300">
+          <DialogHeader className="text-center mb-2">
+            <DialogTitle className="text-2xl font-extrabold tracking-tight">Send to Phone</DialogTitle>
+            <DialogDescription className="text-sm font-medium mt-2 truncate max-w-[250px]">
+              Scan to download <span className="font-bold text-foreground">{qrFile?.file_name}</span> instantly.
+            </DialogDescription>
+          </DialogHeader>
+          
+          <div className="bg-white p-5 rounded-[2rem] shadow-inner border border-black/5 my-6">
+            {qrFile && (
+              <img 
+                src={`https://api.qrserver.com/v1/create-qr-code/?size=250x250&data=${encodeURIComponent(qrFile.file_url)}&color=000000&bgcolor=ffffff`} 
+                alt="File QR Code" 
+                className="w-48 h-48 sm:w-56 sm:h-56"
+              />
+            )}
+          </div>
+          
+          <Button 
+            onClick={copyFileLink} 
+            className="w-full h-14 rounded-full text-sm font-bold shadow-lg active:scale-95 transition-all"
+          >
+            <Copy className="h-5 w-5 mr-2" /> Copy Link Instead
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       <FilePreviewModal
         isOpen={isPreviewOpen}
         onClose={() => setIsPreviewOpen(false)}
         file={previewFile}
       />
 
-      {/* Header / Search & Filter Area (Glassy Top) */}
+      {/* Header / Search & Filter Area */}
       <div className="shrink-0 p-4 sm:p-6 border-b border-white/10 dark:border-white/5 bg-white/20 dark:bg-black/10 backdrop-blur-2xl rounded-t-[2rem] z-10 space-y-5">
-        
-        {/* Top Action Row */}
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center border border-primary/20 shadow-inner">
@@ -389,7 +395,6 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
           
           {files.length > 0 && (
             <div className="flex items-center gap-3 w-full sm:w-auto">
-              {/* Search Bar */}
               <div className="relative flex-1 sm:w-64 group">
                 <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-focus-within:text-primary transition-colors" />
                 <Input
@@ -408,7 +413,6 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
                 )}
               </div>
 
-              {/* DOWNLOAD ALL ZIP BUTTON */}
               <Button
                 onClick={handleDownloadZip}
                 disabled={zipping || filteredFiles.length === 0}
@@ -498,7 +502,7 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
                       {getFileIcon(file.file_type)}
                     </div>
                     
-                    <div className="flex items-center gap-1.5 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 bg-background/80 backdrop-blur-md p-1.5 rounded-full border border-border/50 shadow-sm">
+                    <div className="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity duration-300 bg-background/80 backdrop-blur-md p-1.5 rounded-full border border-border/50 shadow-sm">
                       <Button
                         onClick={() => { onFileSelect?.(file.file_name, "view"); setPreviewFile(file); setIsPreviewOpen(true); }}
                         size="icon"
@@ -509,6 +513,16 @@ export const FileList = ({ roomId, userId, isHost, onFileSelect, selectedFile, r
                         <Eye className="h-4 w-4" />
                       </Button>
                       
+                      <Button
+                        onClick={() => setQrFile(file)}
+                        size="icon"
+                        variant="ghost"
+                        className="h-8 w-8 rounded-full hover:bg-blue-500/10 hover:text-blue-500 active:scale-95 transition-all"
+                        title="Send to Phone"
+                      >
+                        <Smartphone className="h-4 w-4" />
+                      </Button>
+
                       {isPrintable(file) && (
                         <Button
                           onClick={() => handlePrintFile(file)}
