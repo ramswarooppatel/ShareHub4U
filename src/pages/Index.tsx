@@ -8,7 +8,7 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Loader2, Lock, Key, Globe, ArrowRight, Sparkles, Shield, Zap, Hash, Plus, Settings, Trash, Clock, MapPin, ChevronRight, RefreshCw } from "lucide-react";
+import { Loader2, Lock, Key, Globe, ArrowRight, Sparkles, Shield, Zap, Hash, Plus, Settings, Trash, Clock, MapPin, ChevronRight, RefreshCw, Info } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
@@ -257,6 +257,11 @@ const Index = () => {
               <Clock className="h-5 w-5 text-muted-foreground hover:text-foreground" />
               {recentRooms.length > 0 && <span className="absolute top-2 right-2 w-2.5 h-2.5 bg-primary border-2 border-background rounded-full" />}
             </Button>
+
+            <Button size="icon" variant="ghost" onClick={() => navigate('/contributors')} className="h-10 w-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all" title="Contributors">
+              <Info className="h-5 w-5 text-muted-foreground hover:text-foreground" />
+            </Button>
+
             <Button size="icon" variant="ghost" onClick={() => setSettingsOpen(true)} className="h-10 w-10 rounded-full hover:bg-black/5 dark:hover:bg-white/10 active:scale-95 transition-all" title="Settings">
               <Settings className="h-5 w-5 text-muted-foreground hover:text-foreground" />
             </Button>

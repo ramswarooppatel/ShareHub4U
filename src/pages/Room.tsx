@@ -7,6 +7,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
 import { Upload, LogOut, Copy, Check, FileText, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Shield, Lock, Globe, Loader2, Info, QrCode, CodeXml } from "lucide-react";import { FileUpload } from "@/components/room/FileUpload";
+import { RoomTimer } from "@/components/room/RoomTimer";
 import { FileList } from "@/components/room/FileList";
 import { MarkdownEditor } from "@/components/room/MarkdownEditor";
 import { JoinRequestDialog } from "@/components/room/JoinRequestDialog";
@@ -236,6 +237,11 @@ const Room = () => {
                 {room.room_type}
               </span>
             </div>
+          </div>
+
+          {/* Timer (shows remaining time) */}
+          <div className="hidden sm:flex items-center px-2">
+            <RoomTimer expiresAt={room.expires_at} isPermanent={room.is_permanent} />
           </div>
 
           {/* Desktop Actions */}
