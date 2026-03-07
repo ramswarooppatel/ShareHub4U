@@ -2,7 +2,7 @@ import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
-import { Upload, Loader2, FileUp, X, ClipboardPaste } from "lucide-react";
+import { Upload, Loader2, FileUp, X, ClipboardPaste, Check } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 
 interface FileUploadProps {
