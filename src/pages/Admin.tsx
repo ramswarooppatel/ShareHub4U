@@ -57,7 +57,7 @@ const Admin = () => {
       description: 'Login to admin',
       action: () => {
         if (!isAuthenticated) {
-          document.querySelector('[data-shortcut="admin-login"]')?.click();
+          (document.querySelector('[data-shortcut="admin-login"]') as HTMLElement)?.click();
         }
       },
       context: 'Authentication'
