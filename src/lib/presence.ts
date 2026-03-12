@@ -35,7 +35,7 @@ export async function fetchNearbyRooms(ttlMillis = 2 * 60 * 1000) {
   if (!public_ip) return [] as { room_code: string; display_name?: string; last_seen: string }[];
   const since = new Date(Date.now() - ttlMillis).toISOString();
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('room_presence')
       .select('room_code, display_name, last_seen')
       .eq('public_ip', public_ip)
