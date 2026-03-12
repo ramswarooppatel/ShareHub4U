@@ -18,7 +18,7 @@ export async function registerPresence(roomCode: string, displayName?: string) {
   const public_ip = await getPublicIp();
   if (!public_ip) return;
   try {
-    await supabase.from('room_presence').upsert({
+    await (supabase as any).from('room_presence').upsert({
       room_code: roomCode,
       public_ip,
       display_name: displayName || null,
