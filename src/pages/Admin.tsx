@@ -81,7 +81,7 @@ const Admin = () => {
         if (isAuthenticated) {
           // Find the first "Make Permanent" button
           const permanentBtn = document.querySelector('button:has(.lucide-zap)');
-          if (permanentBtn) permanentBtn.click();
+          if (permanentBtn) (permanentBtn as HTMLElement).click();
         }
       },
       context: 'Rooms'
