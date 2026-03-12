@@ -19,7 +19,7 @@ export default function Waiting() {
       key: 'b',
       alt: true,
       description: 'Go back to home',
-      action: () => document.querySelector('[data-shortcut="back-home"]')?.click() || navigate("/"),
+      action: () => (document.querySelector('[data-shortcut="back-home"]') as HTMLElement)?.click() || navigate("/"),
       context: 'Navigation'
     },
     {
