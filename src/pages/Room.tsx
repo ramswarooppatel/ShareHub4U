@@ -17,6 +17,7 @@ import { getDeviceId } from "@/utils/deviceId";
 import { RoomSettings } from "@/components/room/RoomSettings";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { CreateFileTab } from "@/components/room/CreateFileTab";
 
 interface Room {
   id: string;
