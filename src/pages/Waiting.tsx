@@ -19,7 +19,7 @@ export default function Waiting() {
       key: 'b',
       alt: true,
       description: 'Go back to home',
-      action: () => document.querySelector('[data-shortcut="back-home"]')?.click() || navigate("/"),
+      action: () => { (document.querySelector('[data-shortcut="back-home"]') as HTMLElement)?.click(); if (!document.querySelector('[data-shortcut="back-home"]')) navigate("/"); },
       context: 'Navigation'
     },
     {
@@ -28,7 +28,7 @@ export default function Waiting() {
       description: 'Join room (when approved)',
       action: () => {
         if (status === "approved") {
-          document.querySelector('[data-shortcut="join-room"]')?.click() || navigate(`/room/${code}`);
+          (document.querySelector('[data-shortcut="join-room"]') as HTMLElement)?.click(); if (!document.querySelector('[data-shortcut="join-room"]')) navigate(`/room/${code}`);
         }
       },
       context: 'Room'

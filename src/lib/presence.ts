@@ -18,7 +18,7 @@ export async function registerPresence(roomCode: string, displayName?: string) {
   const public_ip = await getPublicIp();
   if (!public_ip) return;
   try {
-    await supabase.from('room_presence').upsert({
+    await (supabase as any).from('room_presence').upsert({
       room_code: roomCode,
       public_ip,
       display_name: displayName || null,
@@ -35,7 +35,7 @@ export async function fetchNearbyRooms(ttlMillis = 2 * 60 * 1000) {
   if (!public_ip) return [] as { room_code: string; display_name?: string; last_seen: string }[];
   const since = new Date(Date.now() - ttlMillis).toISOString();
   try {
-    const { data, error } = await supabase
+    const { data, error } = await (supabase as any)
       .from('room_presence')
       .select('room_code, display_name, last_seen')
       .eq('public_ip', public_ip)
@@ -56,7 +56,7 @@ export async function fetchNearbyRooms(ttlMillis = 2 * 60 * 1000) {
 export async function cleanupOldPresence(ttlMillis = 5 * 60 * 1000) {
   const cutoff = new Date(Date.now() - ttlMillis).toISOString();
   try {
-    await supabase.from('room_presence').delete().lt('last_seen', cutoff);
+    await (supabase as any).from('room_presence').delete().lt('last_seen', cutoff);
   } catch (e) {
     // ignore
   }

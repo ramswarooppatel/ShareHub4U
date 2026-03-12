@@ -57,7 +57,7 @@ const Admin = () => {
       description: 'Login to admin',
       action: () => {
         if (!isAuthenticated) {
-          document.querySelector('[data-shortcut="admin-login"]')?.click();
+          (document.querySelector('[data-shortcut="admin-login"]') as HTMLElement)?.click();
         }
       },
       context: 'Authentication'
@@ -68,7 +68,7 @@ const Admin = () => {
       description: 'Create pro code',
       action: () => {
         if (isAuthenticated) {
-          document.querySelector('[data-shortcut="create-pro-code"]')?.click();
+          (document.querySelector('[data-shortcut="create-pro-code"]') as HTMLElement)?.click();
         }
       },
       context: 'Pro Codes'
@@ -81,7 +81,7 @@ const Admin = () => {
         if (isAuthenticated) {
           // Find the first "Make Permanent" button
           const permanentBtn = document.querySelector('button:has(.lucide-zap)');
-          if (permanentBtn) permanentBtn.click();
+          if (permanentBtn) (permanentBtn as HTMLElement).click();
         }
       },
       context: 'Rooms'
@@ -94,7 +94,7 @@ const Admin = () => {
         if (isAuthenticated) {
           // Find the first "Edit Expiry" button
           const expiryBtn = document.querySelector('button:has(.lucide-calendar)');
-          if (expiryBtn) expiryBtn.click();
+          if (expiryBtn) (expiryBtn as HTMLElement).click();
         }
       },
       context: 'Rooms'

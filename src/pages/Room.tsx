@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
-import { Upload, LogOut, Copy, Check, FileText, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Shield, Lock, Globe, Loader2, Info, QrCode, CodeXml } from "lucide-react";import { FileUpload } from "@/components/room/FileUpload";
+import { Upload, LogOut, Copy, Check, FileText, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Shield, Lock, Globe, Loader2, Info, QrCode, CodeXml, Plus } from "lucide-react";import { FileUpload } from "@/components/room/FileUpload";
 import { RoomTimer } from "@/components/room/RoomTimer";
 import { FileList } from "@/components/room/FileList";
 import { MarkdownEditor } from "@/components/room/MarkdownEditor";
@@ -17,6 +17,7 @@ import { getDeviceId } from "@/utils/deviceId";
 import { RoomSettings } from "@/components/room/RoomSettings";
 import { Sheet, SheetContent, SheetTrigger, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { CreateFileTab } from "@/components/room/CreateFileTab";
 
 interface Room {
   id: string;
@@ -352,6 +353,9 @@ const Room = () => {
               <TabsTrigger value="markdown" className="text-xs font-bold uppercase tracking-widest px-8 py-2.5 rounded-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md transition-all">
                 <FileText className="h-4 w-4 mr-2" /> Notes
               </TabsTrigger>
+              <TabsTrigger value="create" className="text-xs font-bold uppercase tracking-widest px-8 py-2.5 rounded-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md transition-all">
+                <Plus className="h-4 w-4 mr-2" /> Create
+              </TabsTrigger>
             </TabsList>
           </div>
 
@@ -378,6 +382,13 @@ const Room = () => {
           <TabsContent value="markdown" className="mt-0 outline-none animate-in fade-in zoom-in-95 duration-500">
             <Card className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] rounded-[2rem] min-h-[85vh] flex flex-col overflow-hidden">
               <MarkdownEditor roomId={room.id} userId={userId} />
+            </Card>
+          </TabsContent>
+
+          {/* Create Content */}
+          <TabsContent value="create" className="mt-0 outline-none animate-in fade-in zoom-in-95 duration-500">
+            <Card className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] rounded-[2rem] min-h-[85vh] flex flex-col overflow-hidden">
+              <CreateFileTab roomId={room.id} userId={userId} onFileSaved={() => { setFilesRefreshTrigger(prev => prev + 1); setActiveTab("files"); }} />
             </Card>
           </TabsContent>
         </Tabs>
@@ -410,6 +421,13 @@ const Room = () => {
           >
             <FileText className={`h-5 w-5 mb-1 ${activeTab === "markdown" ? "stroke-[2.5px]" : ""}`} />
             <span className="text-[10px] font-extrabold uppercase tracking-widest">Notes</span>
+          </button>
+          <button 
+            onClick={() => setActiveTab("create")} 
+            className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-full transition-all duration-300 active:scale-95 ${activeTab === "create" ? "bg-background shadow-md text-primary" : "text-muted-foreground hover:bg-white/20"}`}
+          >
+            <Plus className={`h-5 w-5 mb-1 ${activeTab === "create" ? "stroke-[2.5px]" : ""}`} />
+            <span className="text-[10px] font-extrabold uppercase tracking-widest">Create</span>
           </button>
         </div>
       </div>
