@@ -422,6 +422,13 @@ const Room = () => {
             <FileText className={`h-5 w-5 mb-1 ${activeTab === "markdown" ? "stroke-[2.5px]" : ""}`} />
             <span className="text-[10px] font-extrabold uppercase tracking-widest">Notes</span>
           </button>
+          <button 
+            onClick={() => setActiveTab("create")} 
+            className={`flex-1 flex flex-col items-center justify-center py-2.5 rounded-full transition-all duration-300 active:scale-95 ${activeTab === "create" ? "bg-background shadow-md text-primary" : "text-muted-foreground hover:bg-white/20"}`}
+          >
+            <Plus className={`h-5 w-5 mb-1 ${activeTab === "create" ? "stroke-[2.5px]" : ""}`} />
+            <span className="text-[10px] font-extrabold uppercase tracking-widest">Create</span>
+          </button>
         </div>
       </div>
 
