@@ -182,17 +182,17 @@ const Index = () => {
       const hours = roomTiming.includes('h') ? parseInt(roomTiming) : parseInt(roomTiming) * 24;
       const expiresAt = new Date(now.getTime() + hours * 60 * 60 * 1000);
 
-      const { data: room, error } = await supabase.from("rooms").insert({
+      const { data: room, error } = await supabase.from("rooms").insert([{
         room_code: roomCode, 
         room_type: roomType, 
         host_id: null,
         room_password: roomType === "private_key" ? roomPassword : null,
         is_permanent: false, 
-        expires_at: expiresAt, 
+        expires_at: expiresAt.toISOString(), 
         file_sharing_enabled: true,
         only_host_can_upload: false, 
         auto_accept_requests: roomType === "locked" ? false : true,
-      }).select().single();
+      }]).select().single();
 
       if (error) throw error;
 
