@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useToast } from "@/hooks/use-toast";
 import { useKeyboardShortcuts, KeyboardShortcut } from "@/hooks/use-keyboard-shortcuts";
-import { Upload, LogOut, Copy, Check, FileText, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Shield, Lock, Globe, Loader2, Info, QrCode, CodeXml } from "lucide-react";import { FileUpload } from "@/components/room/FileUpload";
+import { Upload, LogOut, Copy, Check, FileText, UserCheck, Eye, EyeOff, RefreshCw, Share2, Menu, Shield, Lock, Globe, Loader2, Info, QrCode, CodeXml, Plus } from "lucide-react";import { FileUpload } from "@/components/room/FileUpload";
 import { RoomTimer } from "@/components/room/RoomTimer";
 import { FileList } from "@/components/room/FileList";
 import { MarkdownEditor } from "@/components/room/MarkdownEditor";
