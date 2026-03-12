@@ -384,6 +384,13 @@ const Room = () => {
               <MarkdownEditor roomId={room.id} userId={userId} />
             </Card>
           </TabsContent>
+
+          {/* Create Content */}
+          <TabsContent value="create" className="mt-0 outline-none animate-in fade-in zoom-in-95 duration-500">
+            <Card className="bg-white/40 dark:bg-zinc-900/40 backdrop-blur-xl border border-white/20 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.1)] rounded-[2rem] min-h-[85vh] flex flex-col overflow-hidden">
+              <CreateFileTab roomId={room.id} userId={userId} onFileSaved={() => { setFilesRefreshTrigger(prev => prev + 1); setActiveTab("files"); }} />
+            </Card>
+          </TabsContent>
         </Tabs>
 
         {/* Desktop ONLY Host Join Requests (If Locked) */}
