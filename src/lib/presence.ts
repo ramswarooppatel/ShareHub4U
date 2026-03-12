@@ -56,7 +56,7 @@ export async function fetchNearbyRooms(ttlMillis = 2 * 60 * 1000) {
 export async function cleanupOldPresence(ttlMillis = 5 * 60 * 1000) {
   const cutoff = new Date(Date.now() - ttlMillis).toISOString();
   try {
-    await supabase.from('room_presence').delete().lt('last_seen', cutoff);
+    await (supabase as any).from('room_presence').delete().lt('last_seen', cutoff);
   } catch (e) {
     // ignore
   }
