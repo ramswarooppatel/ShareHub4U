@@ -28,7 +28,7 @@ export default function Waiting() {
       description: 'Join room (when approved)',
       action: () => {
         if (status === "approved") {
-          (document.querySelector('[data-shortcut="join-room"]') as HTMLElement)?.click() || navigate(`/room/${code}`);
+          (document.querySelector('[data-shortcut="join-room"]') as HTMLElement)?.click(); if (!document.querySelector('[data-shortcut="join-room"]')) navigate(`/room/${code}`);
         }
       },
       context: 'Room'

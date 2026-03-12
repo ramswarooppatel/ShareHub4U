@@ -94,7 +94,7 @@ const Admin = () => {
         if (isAuthenticated) {
           // Find the first "Edit Expiry" button
           const expiryBtn = document.querySelector('button:has(.lucide-calendar)');
-          if (expiryBtn) expiryBtn.click();
+          if (expiryBtn) (expiryBtn as HTMLElement).click();
         }
       },
       context: 'Rooms'
