@@ -68,7 +68,7 @@ const Admin = () => {
       description: 'Create pro code',
       action: () => {
         if (isAuthenticated) {
-          document.querySelector('[data-shortcut="create-pro-code"]')?.click();
+          (document.querySelector('[data-shortcut="create-pro-code"]') as HTMLElement)?.click();
         }
       },
       context: 'Pro Codes'
