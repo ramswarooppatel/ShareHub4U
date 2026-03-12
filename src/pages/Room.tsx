@@ -353,6 +353,9 @@ const Room = () => {
               <TabsTrigger value="markdown" className="text-xs font-bold uppercase tracking-widest px-8 py-2.5 rounded-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md transition-all">
                 <FileText className="h-4 w-4 mr-2" /> Notes
               </TabsTrigger>
+              <TabsTrigger value="create" className="text-xs font-bold uppercase tracking-widest px-8 py-2.5 rounded-full data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-md transition-all">
+                <Plus className="h-4 w-4 mr-2" /> Create
+              </TabsTrigger>
             </TabsList>
           </div>
 
